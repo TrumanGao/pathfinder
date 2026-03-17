@@ -4,75 +4,73 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Frontend response payload for route/pathfinding.
+ * Route response contract used by the frontend.
  */
 public class AlgorithmResponse {
-    private String algorithm;
-    private boolean pathFound;
-    private double totalDistanceMeters;
-    private long runtimeMs;
+    private List<AlgorithmResult> results = new ArrayList<>();
 
-    private String startNodeId;
-    private String endNodeId;
-
-    private List<Node> path = new ArrayList<>();
-
-    public AlgorithmResponse() {
+    public List<AlgorithmResult> getResults() {
+        return results;
     }
 
-    public String getAlgorithm() {
-        return algorithm;
+    public void setResults(List<AlgorithmResult> results) {
+        this.results = results == null ? new ArrayList<>() : results;
     }
 
-    public void setAlgorithm(String algorithm) {
-        this.algorithm = algorithm;
-    }
+    public static class AlgorithmResult {
+        private String algorithm;
+        private List<Node> path = new ArrayList<>();
+        private List<Node> visitedOrder = new ArrayList<>();
+        private double distanceM;
+        private long durationMs;
+        private int visitedCount;
 
-    public boolean isPathFound() {
-        return pathFound;
-    }
+        public String getAlgorithm() {
+            return algorithm;
+        }
 
-    public void setPathFound(boolean pathFound) {
-        this.pathFound = pathFound;
-    }
+        public void setAlgorithm(String algorithm) {
+            this.algorithm = algorithm;
+        }
 
-    public double getTotalDistanceMeters() {
-        return totalDistanceMeters;
-    }
+        public List<Node> getPath() {
+            return path;
+        }
 
-    public void setTotalDistanceMeters(double totalDistanceMeters) {
-        this.totalDistanceMeters = totalDistanceMeters;
-    }
+        public void setPath(List<Node> path) {
+            this.path = path == null ? new ArrayList<>() : path;
+        }
 
-    public long getRuntimeMs() {
-        return runtimeMs;
-    }
+        public List<Node> getVisitedOrder() {
+            return visitedOrder;
+        }
 
-    public void setRuntimeMs(long runtimeMs) {
-        this.runtimeMs = runtimeMs;
-    }
+        public void setVisitedOrder(List<Node> visitedOrder) {
+            this.visitedOrder = visitedOrder == null ? new ArrayList<>() : visitedOrder;
+        }
 
-    public String getStartNodeId() {
-        return startNodeId;
-    }
+        public double getDistanceM() {
+            return distanceM;
+        }
 
-    public void setStartNodeId(String startNodeId) {
-        this.startNodeId = startNodeId;
-    }
+        public void setDistanceM(double distanceM) {
+            this.distanceM = distanceM;
+        }
 
-    public String getEndNodeId() {
-        return endNodeId;
-    }
+        public long getDurationMs() {
+            return durationMs;
+        }
 
-    public void setEndNodeId(String endNodeId) {
-        this.endNodeId = endNodeId;
-    }
+        public void setDurationMs(long durationMs) {
+            this.durationMs = durationMs;
+        }
 
-    public List<Node> getPath() {
-        return path;
-    }
+        public int getVisitedCount() {
+            return visitedCount;
+        }
 
-    public void setPath(List<Node> path) {
-        this.path = path;
+        public void setVisitedCount(int visitedCount) {
+            this.visitedCount = visitedCount;
+        }
     }
 }

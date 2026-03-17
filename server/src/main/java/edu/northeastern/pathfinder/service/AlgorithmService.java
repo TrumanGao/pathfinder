@@ -26,21 +26,24 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Minimal orchestration service for frontend API integration.
+ * Minimal backend orchestration aligned to the frontend API contract.
  */
 @Service
 public class AlgorithmService {
     private final Graph graph;
-
     private final ShortestPathAlgorithm astar = new AStarShortestPath();
     private final ShortestPathAlgorithm dijkstra = new DijkstraShortestPath();
 
+    /** Deterministic API-facing node id mapping (int <-> graph node id string). */
+    private final Map<String, Integer> apiNodeIdByGraphNodeId;
+    private final Map<Integer, String> graphNodeIdByApiNodeId;
+
     private final List<PoiEntry> pois;
 
-    private final double south;
-    private final double north;
-    private final double west;
-    private final double east;
+    private final double minLat;
+    private final double maxLat;
+    private final double minLon;
+    private final double maxLon;
 
     public AlgorithmService(
             @Value("${pathfinder.graph.geojson-path:../data/full.geojson}") String geoJsonPath,
@@ -54,212 +57,238 @@ public class AlgorithmService {
 
         this.pois = loadPois(Paths.get(poiCsvPath));
 
-        double s = Double.POSITIVE_INFINITY;
-        double n = Double.NEGATIVE_INFINITY;
-        double w = Double.POSITIVE_INFINITY;
-        double e = Double.NEGATIVE_INFINITY;
-        for (edu.northeastern.pathfinder.graph.Node node : graph.getNodesById().values()) {
-            s = Math.min(s, node.getLat());
-            n = Math.max(n, node.getLat());
-            w = Math.min(w, node.getLon());
-            e = Math.max(e, node.getLon());
+        List<String> sortedGraphIds = new ArrayList<>(graph.getNodesById().keySet());
+        sortedGraphIds.sort(Comparator.naturalOrder());
+        this.apiNodeIdByGraphNodeId = new HashMap<>(sortedGraphIds.size());
+        this.graphNodeIdByApiNodeId = new HashMap<>(sortedGraphIds.size());
+        for (int i = 0; i < sortedGraphIds.size(); i++) {
+            int apiId = i + 1;
+            String graphId = sortedGraphIds.get(i);
+            apiNodeIdByGraphNodeId.put(graphId, apiId);
+            graphNodeIdByApiNodeId.put(apiId, graphId);
         }
-        this.south = s;
-        this.north = n;
-        this.west = w;
-        this.east = e;
+
+        double south = Double.POSITIVE_INFINITY;
+        double north = Double.NEGATIVE_INFINITY;
+        double west = Double.POSITIVE_INFINITY;
+        double east = Double.NEGATIVE_INFINITY;
+        for (edu.northeastern.pathfinder.graph.Node node : graph.getNodesById().values()) {
+            south = Math.min(south, node.getLat());
+            north = Math.max(north, node.getLat());
+            west = Math.min(west, node.getLon());
+            east = Math.max(east, node.getLon());
+        }
+        this.minLat = south;
+        this.maxLat = north;
+        this.minLon = west;
+        this.maxLon = east;
     }
 
     /**
-     * Compatibility endpoint retained from previous integration.
+     * POST /api/route
+     * Request: {startNodeId, endNodeId, algorithms[]}
+     * Response: {results:[...]}
      */
-    public AlgorithmResponse findRoute(AlgorithmRequest request) {
-        String startNodeId = findNearestNodeId(request.getStartLat(), request.getStartLon());
-        String endNodeId = findNearestNodeId(request.getEndLat(), request.getEndLon());
+    public AlgorithmResponse route(AlgorithmRequest request) {
+        String startGraphNodeId = resolveGraphNodeIdFromRequestStart(request);
+        String endGraphNodeId = resolveGraphNodeIdFromRequestEnd(request);
 
-        String algo = normalizeAlgorithm(request.getAlgorithm());
-        ShortestPathAlgorithm selected = "dijkstra".equals(algo) ? dijkstra : astar;
+        List<String> requestedAlgorithms = request.getAlgorithms() == null || request.getAlgorithms().isEmpty()
+                ? List.of("astar")
+                : request.getAlgorithms();
 
-        long t0 = System.nanoTime();
-        PathfindingResult result = selected.findPath(graph, startNodeId, endNodeId);
-        long t1 = System.nanoTime();
+        List<AlgorithmResponse.AlgorithmResult> results = new ArrayList<>();
+        for (String algoRaw : requestedAlgorithms) {
+            String algo = normalizeAlgorithm(algoRaw);
+            ShortestPathAlgorithm selected = selectAlgorithm(algo);
+
+            long t0 = System.nanoTime();
+            PathfindingResult pathResult = selected.findPath(graph, startGraphNodeId, endGraphNodeId);
+            long t1 = System.nanoTime();
+
+            List<Node> path = toApiNodes(pathResult.getPathNodeIds());
+            List<Node> visitedOrder = new ArrayList<>(path); // lightweight placeholder for current stage
+
+            AlgorithmResponse.AlgorithmResult result = new AlgorithmResponse.AlgorithmResult();
+            result.setAlgorithm(algo);
+            result.setPath(path);
+            result.setVisitedOrder(visitedOrder);
+            result.setDistanceM(pathResult.isPathFound() ? pathResult.getTotalDistanceMeters() : Double.POSITIVE_INFINITY);
+            result.setDurationMs((t1 - t0) / 1_000_000L);
+            result.setVisitedCount(visitedOrder.size());
+            results.add(result);
+        }
 
         AlgorithmResponse response = new AlgorithmResponse();
-        response.setAlgorithm(algo);
-        response.setStartNodeId(startNodeId);
-        response.setEndNodeId(endNodeId);
-        response.setPathFound(result.isPathFound());
-        response.setTotalDistanceMeters(result.isPathFound() ? result.getTotalDistanceMeters() : Double.POSITIVE_INFINITY);
-        response.setRuntimeMs((t1 - t0) / 1_000_000L);
-        response.setPath(toPathNodes(result.getPathNodeIds()));
+        response.setResults(results);
         return response;
     }
 
     /**
      * GET /api/map-info
+     * Response: { bounds:{minLat,maxLat,minLon,maxLon}, nodeCount, edgeCount }
      */
     public Map<String, Object> getMapInfo() {
-        Map<String, Object> mapBounds = new LinkedHashMap<>();
-        mapBounds.put("south", south);
-        mapBounds.put("north", north);
-        mapBounds.put("west", west);
-        mapBounds.put("east", east);
+        Map<String, Object> bounds = new LinkedHashMap<>();
+        bounds.put("minLat", minLat);
+        bounds.put("maxLat", maxLat);
+        bounds.put("minLon", minLon);
+        bounds.put("maxLon", maxLon);
 
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("mapBounds", mapBounds);
+        response.put("bounds", bounds);
+        response.put("nodeCount", graph.getNodeCount());
+        response.put("edgeCount", graph.getEdgeCount());
         return response;
     }
 
     /**
-     * POST /api/path-finding/compare
-     *
-     * Current backend supports Dijkstra + A* only (no BFS).
+     * GET /api/poi-search?q=...&limit=...
+     * Response: POI[] (array)
      */
-    public Map<String, Object> comparePath(AlgorithmRequest request) {
-        String startNodeId = findNearestNodeId(request.getStartLat(), request.getStartLon());
-        String endNodeId = findNearestNodeId(request.getEndLat(), request.getEndLon());
-
-        long allStart = System.nanoTime();
-        AlgoRun d = runAlgo("Dijkstra", dijkstra, startNodeId, endNodeId);
-        AlgoRun a = runAlgo("A*", astar, startNodeId, endNodeId);
-        long allEnd = System.nanoTime();
-
-        List<AlgoRun> runs = new ArrayList<>(List.of(d, a));
-        runs.sort(Comparator.comparingLong(AlgoRun::timeMs));
-
-        String fastest = runs.get(0).name();
-        long totalComputeMs = (allEnd - allStart) / 1_000_000L;
-
-        Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("totalComputeMs", totalComputeMs);
-        summary.put("fastestAlgo", fastest);
-
-        List<String> algoOrder = List.of("Dijkstra", "A*");
-
-        Map<String, Object> resultsByAlgo = new LinkedHashMap<>();
-        resultsByAlgo.put("Dijkstra", toCompareAlgoPayload(d));
-        resultsByAlgo.put("A*", toCompareAlgoPayload(a));
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("summary", summary);
-        response.put("algoOrder", algoOrder);
-        response.put("resultsByAlgo", resultsByAlgo);
-        return response;
-    }
-
-    /**
-     * GET /api/poi-search?q=...
-     */
-    public Map<String, Object> searchPoi(String q, int limit) {
+    public List<Map<String, Object>> searchPoi(String q, int limit) {
         String needle = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
         int boundedLimit = Math.max(1, Math.min(limit, 50));
 
         List<Map<String, Object>> results = new ArrayList<>();
         for (PoiEntry poi : pois) {
-            if (!needle.isEmpty() && !poi.name().toLowerCase(Locale.ROOT).contains(needle)) {
+            if (!needle.isEmpty() && !matchesPoi(poi, needle)) {
                 continue;
             }
             Map<String, Object> item = new LinkedHashMap<>();
+            item.put("poiId", poi.poiId());
             item.put("name", poi.name());
-            item.put("lng", poi.lon());
             item.put("lat", poi.lat());
+            item.put("lon", poi.lon());
+            item.put("amenity", poi.amenity());
+            item.put("tourism", poi.tourism());
+            item.put("shop", poi.shop());
+            item.put("leisure", poi.leisure());
+            item.put("addrStreet", poi.addrStreet());
             results.add(item);
             if (results.size() >= boundedLimit) {
                 break;
             }
         }
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("results", results);
-        return response;
+        return results;
     }
 
     /**
-     * GET /api/node-info?lng=...&lat=...
+     * GET /api/nearest-node?lat=...&lon=...
+     * Response: {nodeId, lat, lon, distanceM}
      */
-    public Map<String, Object> nearestNodeInfo(double lat, double lon) {
-        String nodeId = findNearestNodeId(lat, lon);
-        edu.northeastern.pathfinder.graph.Node node = graph.getNode(nodeId)
-                .orElseThrow(() -> new IllegalStateException("Nearest node not found: " + nodeId));
+    public Map<String, Object> nearestNode(double lat, double lon) {
+        Nearest nearest = findNearestNode(lat, lon);
+        edu.northeastern.pathfinder.graph.Node node = graph.getNode(nearest.graphNodeId())
+                .orElseThrow(() -> new IllegalStateException("Nearest node not found: " + nearest.graphNodeId()));
 
         Map<String, Object> response = new LinkedHashMap<>();
-        response.put("nodeId", node.getNodeId());
-        response.put("lng", node.getLon());
+        response.put("nodeId", apiNodeIdByGraphNodeId.get(nearest.graphNodeId()));
         response.put("lat", node.getLat());
-        response.put("name", null);
-        response.put("tags", Map.of());
+        response.put("lon", node.getLon());
+        response.put("distanceM", nearest.distanceMeters());
         return response;
     }
 
-    private AlgoRun runAlgo(String name, ShortestPathAlgorithm algo, String startNodeId, String endNodeId) {
-        long t0 = System.nanoTime();
-        PathfindingResult result = algo.findPath(graph, startNodeId, endNodeId);
-        long t1 = System.nanoTime();
-        return new AlgoRun(name, result, (t1 - t0) / 1_000_000L);
-    }
-
-    private Map<String, Object> toCompareAlgoPayload(AlgoRun run) {
-        List<List<Double>> path = toPolyline(run.result().getPathNodeIds());
-
-        Map<String, Object> details = new LinkedHashMap<>();
-        details.put("timeMs", run.timeMs());
-        details.put("distance", run.result().isPathFound() ? run.result().getTotalDistanceMeters() : Double.POSITIVE_INFINITY);
-        // Current stage does not track explored-node count inside algorithms.
-        details.put("nodesExplored", path.size());
-
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("path", path);
-        payload.put("visited", List.of());
-        payload.put("details", details);
-        return payload;
-    }
-
-    private List<List<Double>> toPolyline(List<String> nodeIds) {
-        List<List<Double>> line = new ArrayList<>();
-        for (String nodeId : nodeIds) {
-            graph.getNode(nodeId).ifPresent(n -> line.add(List.of(n.getLon(), n.getLat())));
+    private String resolveGraphNodeIdFromRequestStart(AlgorithmRequest request) {
+        if (request.getStartNodeId() != null) {
+            return resolveGraphNodeId(request.getStartNodeId());
         }
-        return line;
+        return findNearestNode(request.getStartLat(), request.getStartLon()).graphNodeId();
     }
 
-    private String normalizeAlgorithm(String algorithm) {
-        if (algorithm == null || algorithm.isBlank()) {
+    private String resolveGraphNodeIdFromRequestEnd(AlgorithmRequest request) {
+        if (request.getEndNodeId() != null) {
+            return resolveGraphNodeId(request.getEndNodeId());
+        }
+        return findNearestNode(request.getEndLat(), request.getEndLon()).graphNodeId();
+    }
+
+    private String resolveGraphNodeId(int apiNodeId) {
+        if (apiNodeId < 0) {
+            PoiEntry poi = findPoiById(Math.abs(apiNodeId));
+            return findNearestNode(poi.lat(), poi.lon()).graphNodeId();
+        }
+
+        String graphNodeId = graphNodeIdByApiNodeId.get(apiNodeId);
+        if (graphNodeId == null) {
+            throw new IllegalArgumentException("Unknown nodeId: " + apiNodeId);
+        }
+        return graphNodeId;
+    }
+
+    private PoiEntry findPoiById(int poiId) {
+        for (PoiEntry poi : pois) {
+            if (poi.poiId() == poiId) {
+                return poi;
+            }
+        }
+        throw new IllegalArgumentException("Unknown poiId: " + poiId);
+    }
+
+    private String normalizeAlgorithm(String value) {
+        if (value == null || value.isBlank()) {
             return "astar";
         }
-        String lower = algorithm.trim().toLowerCase(Locale.ROOT);
-        if ("dijkstra".equals(lower)) {
-            return "dijkstra";
-        }
-        return "astar";
+        String lower = value.trim().toLowerCase(Locale.ROOT);
+        return switch (lower) {
+            case "dijkstra" -> "dijkstra";
+            case "astar" -> "astar";
+            case "bibfs" -> "bibfs";
+            default -> "astar";
+        };
     }
 
-    /**
-     * Simple nearest-node matching for current graph size (~12k nodes).
-     */
-    private String findNearestNodeId(double lat, double lon) {
-        String bestId = null;
-        double best = Double.POSITIVE_INFINITY;
+    private ShortestPathAlgorithm selectAlgorithm(String algorithm) {
+        if ("dijkstra".equals(algorithm)) {
+            return dijkstra;
+        }
+        if ("bibfs".equals(algorithm)) {
+            // Bi-BFS is not implemented in current stage. Keep API compatibility with a lightweight fallback.
+            return dijkstra;
+        }
+        return astar;
+    }
+
+    private List<Node> toApiNodes(List<String> graphNodeIds) {
+        List<Node> path = new ArrayList<>();
+        for (String graphNodeId : graphNodeIds) {
+            edu.northeastern.pathfinder.graph.Node graphNode = graph.getNode(graphNodeId)
+                    .orElseThrow(() -> new IllegalStateException("Missing graph node: " + graphNodeId));
+            Integer apiNodeId = apiNodeIdByGraphNodeId.get(graphNodeId);
+            if (apiNodeId == null) {
+                throw new IllegalStateException("Missing API node id mapping for graph node: " + graphNodeId);
+            }
+            path.add(new Node(apiNodeId, graphNode.getLat(), graphNode.getLon()));
+        }
+        return path;
+    }
+
+    private Nearest findNearestNode(double lat, double lon) {
+        String bestGraphNodeId = null;
+        double bestDistance = Double.POSITIVE_INFINITY;
 
         for (edu.northeastern.pathfinder.graph.Node node : graph.getNodesById().values()) {
             double d = haversineMeters(lat, lon, node.getLat(), node.getLon());
-            if (d < best) {
-                best = d;
-                bestId = node.getNodeId();
+            if (d < bestDistance) {
+                bestDistance = d;
+                bestGraphNodeId = node.getNodeId();
             }
         }
 
-        if (bestId == null) {
+        if (bestGraphNodeId == null) {
             throw new IllegalStateException("Graph has no nodes");
         }
-        return bestId;
+        return new Nearest(bestGraphNodeId, bestDistance);
     }
 
-    private List<Node> toPathNodes(List<String> nodeIds) {
-        List<Node> path = new ArrayList<>();
-        for (String nodeId : nodeIds) {
-            graph.getNode(nodeId).ifPresent(n -> path.add(new Node(n.getNodeId(), n.getLat(), n.getLon())));
-        }
-        return path;
+    private boolean matchesPoi(PoiEntry poi, String needle) {
+        return poi.name().toLowerCase(Locale.ROOT).contains(needle)
+                || poi.amenity().toLowerCase(Locale.ROOT).contains(needle)
+                || poi.tourism().toLowerCase(Locale.ROOT).contains(needle)
+                || poi.shop().toLowerCase(Locale.ROOT).contains(needle)
+                || poi.leisure().toLowerCase(Locale.ROOT).contains(needle)
+                || poi.addrStreet().toLowerCase(Locale.ROOT).contains(needle);
     }
 
     private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
@@ -284,30 +313,46 @@ public class AlgorithmService {
                 return list;
             }
 
-            String[] columns = header.split(",");
+            String[] columns = header.split(",", -1);
             int nameIdx = indexOf(columns, "name");
-            int lonIdx = indexOf(columns, "lon");
-            int latIdx = indexOf(columns, "lat");
+            int lonIdx = firstIndexOf(columns, "lon", "lng", "longitude");
+            int latIdx = firstIndexOf(columns, "lat", "latitude");
+            int amenityIdx = indexOf(columns, "amenity");
+            int tourismIdx = indexOf(columns, "tourism");
+            int shopIdx = indexOf(columns, "shop");
+            int leisureIdx = indexOf(columns, "leisure");
+            int streetIdx = firstIndexOf(columns, "addr:street", "addrStreet", "street");
             if (nameIdx < 0 || lonIdx < 0 || latIdx < 0) {
                 return list;
             }
 
+            int poiId = 1;
             String line;
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",", -1);
                 if (parts.length <= Math.max(nameIdx, Math.max(lonIdx, latIdx))) {
                     continue;
                 }
-                String name = parts[nameIdx].trim();
+                String name = safeField(parts, nameIdx);
                 if (name.isEmpty()) {
                     continue;
                 }
                 try {
-                    double lon = Double.parseDouble(parts[lonIdx].trim());
-                    double lat = Double.parseDouble(parts[latIdx].trim());
-                    list.add(new PoiEntry(name, lat, lon));
+                    double lon = Double.parseDouble(safeField(parts, lonIdx));
+                    double lat = Double.parseDouble(safeField(parts, latIdx));
+                    list.add(new PoiEntry(
+                            poiId++,
+                            name,
+                            lat,
+                            lon,
+                            safeField(parts, amenityIdx),
+                            safeField(parts, tourismIdx),
+                            safeField(parts, shopIdx),
+                            safeField(parts, leisureIdx),
+                            safeField(parts, streetIdx)
+                    ));
                 } catch (NumberFormatException ignored) {
-                    // skip malformed line
+                    // skip malformed row
                 }
             }
         } catch (IOException ignored) {
@@ -326,9 +371,36 @@ public class AlgorithmService {
         return -1;
     }
 
-    private record AlgoRun(String name, PathfindingResult result, long timeMs) {
+    private int firstIndexOf(String[] columns, String... names) {
+        for (String name : names) {
+            int idx = indexOf(columns, name);
+            if (idx >= 0) {
+                return idx;
+            }
+        }
+        return -1;
     }
 
-    private record PoiEntry(String name, double lat, double lon) {
+    private String safeField(String[] parts, int idx) {
+        if (idx < 0 || idx >= parts.length) {
+            return "";
+        }
+        return parts[idx].trim();
+    }
+
+    private record PoiEntry(
+            int poiId,
+            String name,
+            double lat,
+            double lon,
+            String amenity,
+            String tourism,
+            String shop,
+            String leisure,
+            String addrStreet
+    ) {
+    }
+
+    private record Nearest(String graphNodeId, double distanceMeters) {
     }
 }

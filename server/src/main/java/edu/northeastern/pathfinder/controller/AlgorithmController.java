@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  * Frontend API bridge.
@@ -24,10 +25,9 @@ public class AlgorithmController {
         this.algorithmService = algorithmService;
     }
 
-    /** Compatibility endpoint kept from previous integration pass. */
     @PostMapping("/route")
     public AlgorithmResponse route(@RequestBody AlgorithmRequest request) {
-        return algorithmService.findRoute(request);
+        return algorithmService.route(request);
     }
 
     @GetMapping("/map-info")
@@ -35,24 +35,19 @@ public class AlgorithmController {
         return algorithmService.getMapInfo();
     }
 
-    @PostMapping("/path-finding/compare")
-    public Map<String, Object> compare(@RequestBody AlgorithmRequest request) {
-        return algorithmService.comparePath(request);
-    }
-
     @GetMapping("/poi-search")
-    public Map<String, Object> poiSearch(
+    public List<Map<String, Object>> poiSearch(
             @RequestParam("q") String q,
             @RequestParam(value = "limit", defaultValue = "10") int limit
     ) {
         return algorithmService.searchPoi(q, limit);
     }
 
-    @GetMapping("/node-info")
-    public Map<String, Object> nodeInfo(
-            @RequestParam("lng") double lng,
-            @RequestParam("lat") double lat
+    @GetMapping("/nearest-node")
+    public Map<String, Object> nearestNode(
+            @RequestParam("lat") double lat,
+            @RequestParam("lon") double lon
     ) {
-        return algorithmService.nearestNodeInfo(lat, lng);
+        return algorithmService.nearestNode(lat, lon);
     }
 }

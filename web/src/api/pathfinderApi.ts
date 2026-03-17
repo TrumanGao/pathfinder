@@ -9,7 +9,7 @@ import type {
 // ─────────────────────────────────────────────
 // Toggle: set to false when backend is ready
 // ─────────────────────────────────────────────
-const USE_MOCK = true
+const USE_MOCK = false
 
 // ─────────────────────────────────────────────
 // Real API calls (used when USE_MOCK = false)

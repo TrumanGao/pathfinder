@@ -18,8 +18,9 @@ import java.util.PriorityQueue;
 public final class AStarShortestPath implements ShortestPathAlgorithm {
 
     @Override
-    public PathfindingResult findPath(Graph graph, String startNodeId, String endNodeId) {
+    public PathfindingResult findPath(Graph graph, String startNodeId, String endNodeId, PathCostModel costModel) {
         Objects.requireNonNull(graph, "graph must not be null");
+        Objects.requireNonNull(costModel, "costModel must not be null");
         if (isBlank(startNodeId) || isBlank(endNodeId)) {
             return PathfindingResult.notFound();
         }
@@ -46,7 +47,7 @@ public final class AStarShortestPath implements ShortestPathAlgorithm {
                 }
         );
 
-        double startHeuristic = heuristicMeters(startOpt.get(), endOpt.get());
+        double startHeuristic = costModel.heuristicCost(startOpt.get(), endOpt.get());
         gScore.put(startNodeId, 0.0);
         open.add(new State(startNodeId, 0.0, startHeuristic));
 
@@ -66,8 +67,8 @@ public final class AStarShortestPath implements ShortestPathAlgorithm {
             }
 
             for (Edge edge : graph.getOutgoing(cur.nodeId)) {
-                double w = edge.getSegmentDistanceMeters();
-                if (w < 0) {
+                double edgeCost = costModel.edgeCost(edge);
+                if (!Double.isFinite(edgeCost) || edgeCost < 0) {
                     continue;
                 }
 
@@ -77,13 +78,13 @@ public final class AStarShortestPath implements ShortestPathAlgorithm {
                     continue;
                 }
 
-                double tentativeG = cur.gScore + w;
+                double tentativeG = cur.gScore + edgeCost;
                 double knownG = gScore.getOrDefault(next, Double.POSITIVE_INFINITY);
                 if (tentativeG < knownG) {
                     gScore.put(next, tentativeG);
                     prev.put(next, cur.nodeId);
 
-                    double h = heuristicMeters(nextOpt.get(), endOpt.get());
+                    double h = costModel.heuristicCost(nextOpt.get(), endOpt.get());
                     open.add(new State(next, tentativeG, tentativeG + h));
                 }
             }
@@ -107,23 +108,6 @@ public final class AStarShortestPath implements ShortestPathAlgorithm {
 
         Collections.reverse(path);
         return path;
-    }
-
-    /**
-     * Admissible heuristic for this stage: straight-line geographic distance.
-     */
-    private double heuristicMeters(Node from, Node to) {
-        return haversineMeters(from.getLat(), from.getLon(), to.getLat(), to.getLon());
-    }
-
-    private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
-        double r = 6_371_000.0;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2.0) * Math.sin(dLat / 2.0)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0);
-        return r * (2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a)));
     }
 
     private boolean isBlank(String s) {

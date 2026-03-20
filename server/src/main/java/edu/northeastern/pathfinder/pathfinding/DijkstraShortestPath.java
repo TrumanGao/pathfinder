@@ -17,8 +17,9 @@ import java.util.PriorityQueue;
 public final class DijkstraShortestPath implements ShortestPathAlgorithm {
 
     @Override
-    public PathfindingResult findPath(Graph graph, String startNodeId, String endNodeId) {
+    public PathfindingResult findPath(Graph graph, String startNodeId, String endNodeId, PathCostModel costModel) {
         Objects.requireNonNull(graph, "graph must not be null");
+        Objects.requireNonNull(costModel, "costModel must not be null");
         if (isBlank(startNodeId) || isBlank(endNodeId)) {
             return PathfindingResult.notFound();
         }
@@ -52,13 +53,13 @@ public final class DijkstraShortestPath implements ShortestPathAlgorithm {
             }
 
             for (Edge edge : graph.getOutgoing(cur.nodeId)) {
-                double w = edge.getSegmentDistanceMeters();
-                if (w < 0) {
+                double edgeCost = costModel.edgeCost(edge);
+                if (!Double.isFinite(edgeCost) || edgeCost < 0) {
                     continue;
                 }
 
                 String next = edge.getToNodeId();
-                double cand = cur.distance + w;
+                double cand = cur.distance + edgeCost;
                 double nextBest = dist.getOrDefault(next, Double.POSITIVE_INFINITY);
 
                 if (cand < nextBest) {

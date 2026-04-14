@@ -12,10 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * EN: Search API controller for the current normalized GeoJSON-backed search model.
- * It exposes simple keyword search with optional type filtering and does not implement fuzzy search or ranking engines.
- * 中文：面向当前 GeoJSON 标准化搜索模型的搜索接口控制器。
- * 它只提供简单关键词搜索和可选 type 过滤，不实现模糊搜索或复杂排序引擎。
+ * EN: Search API controller providing keyword search and nearby search.
+ * 中文：搜索接口控制器，提供关键词搜索和附近搜索。
  */
 @RestController
 @RequestMapping("/api")
@@ -27,36 +25,64 @@ public class SearchController {
     }
 
     /**
-     * EN: Searches the normalized SearchItem dataset by case-insensitive substring match.
-     * Accepts `q`, optional `types`, and optional `limit`.
-     * Current limitations: no typo tolerance, no fuzzy search, and no advanced ranking.
-     * 中文：对标准化 SearchItem 数据集执行不区分大小写的子串搜索。
-     * 接收 `q`、可选 `types` 和可选 `limit`。
-     * 当前限制：不支持拼写纠错、不支持模糊搜索，也不支持高级排序。
+     * EN: Keyword search with scored ranking, fuzzy matching, and optional type filtering.
+     * 中文：带评分排序、模糊匹配和可选类型过滤的关键词搜索。
      */
     @GetMapping("/search")
     public SearchResponseDto search(
             @RequestParam("q") String query,
             @RequestParam(value = "types", required = false) List<String> types,
+            @RequestParam(value = "tags", required = false) List<String> tags,
             @RequestParam(value = "limit", required = false) Integer limit
     ) {
-        List<SearchItem> items = searchService.search(query, normalizeTypes(types), limit);
+        List<SearchItem> items = searchService.search(query, normalizeTypes(types), normalizeTypes(tags), limit);
         List<SearchResponseDto.SearchResultDto> results = items.stream()
-                .map(item -> new SearchResponseDto.SearchResultDto(
-                        item.id(),
-                        item.name(),
-                        item.displayName(),
-                        item.type(),
-                        item.subType(),
-                        item.lat(),
-                        item.lon(),
-                        item.source(),
-                        item.routable(),
-                        item.metadata()
-                ))
+                .map(item -> toDto(item, null))
                 .toList();
 
         return new SearchResponseDto(query, results.size(), results);
+    }
+
+    /**
+     * EN: Nearby search: finds places within a radius of the given coordinates,
+     * filtered by type, sorted by distance ascending.
+     * 中文：附近搜索：在给定坐标半径内查找地点，按类型过滤，按距离升序排序。
+     */
+    @GetMapping("/search/nearby")
+    public SearchResponseDto nearby(
+            @RequestParam("lat") double lat,
+            @RequestParam("lon") double lon,
+            @RequestParam(value = "types", required = false) List<String> types,
+            @RequestParam(value = "tags", required = false) List<String> tags,
+            @RequestParam(value = "radius", required = false, defaultValue = "1000") double radiusMeters,
+            @RequestParam(value = "limit", required = false) Integer limit
+    ) {
+        List<SearchService.NearbyResult> nearbyResults =
+                searchService.searchNearby(lat, lon, normalizeTypes(types), normalizeTypes(tags), radiusMeters, limit);
+
+        List<SearchResponseDto.SearchResultDto> results = nearbyResults.stream()
+                .map(nr -> toDto(nr.item(), nr.distanceM()))
+                .toList();
+
+        String queryDesc = String.format("nearby(%.5f,%.5f,r=%.0fm)", lat, lon, radiusMeters);
+        return new SearchResponseDto(queryDesc, results.size(), results);
+    }
+
+    private SearchResponseDto.SearchResultDto toDto(SearchItem item, Double distanceM) {
+        return new SearchResponseDto.SearchResultDto(
+                item.id(),
+                item.name(),
+                item.displayName(),
+                item.type(),
+                item.subType(),
+                item.lat(),
+                item.lon(),
+                item.source(),
+                item.routable(),
+                item.metadata(),
+                distanceM,
+                item.studentTags()
+        );
     }
 
     private List<String> normalizeTypes(List<String> rawTypes) {

@@ -1,5 +1,5 @@
 export type RouteAlgorithm = 'astar' | 'dijkstra'
-export type RouteObjective = 'distance' | 'time' | 'balanced'
+export type RouteObjective = 'distance' | 'time' | 'balanced' | 'safe_walk'
 export type RoadPreferenceKey = 'avoidHighway' | 'preferMainRoad'
 
 export interface SearchResult {
@@ -13,6 +13,8 @@ export interface SearchResult {
   source: string
   routable: boolean
   metadata: Record<string, string>
+  distanceM?: number | null
+  studentTags?: string[]
 }
 
 export interface SearchResponse {
@@ -119,6 +121,30 @@ export interface SelectedLocation {
   subType?: string
   metadata?: Record<string, string>
   input: RouteLocationInput
+}
+
+export type AnnotationCategory = 'recommendation' | 'warning' | 'tip'
+
+export interface Annotation {
+  id: number
+  lat: number
+  lon: number
+  category: AnnotationCategory
+  text: string
+  author: string
+  createdAt: string
+}
+
+export interface AnnotationListResponse {
+  count: number
+  annotations: Annotation[]
+}
+
+export interface RouteStop {
+  label: string
+  nodeId: string
+  lat: number
+  lon: number
 }
 
 export interface PendingMapClick {

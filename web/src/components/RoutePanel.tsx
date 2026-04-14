@@ -4,6 +4,7 @@ import type {
   PendingMapClick,
   RouteAlgorithm,
   RouteObjective,
+  RouteStop,
   SelectedLocation,
 } from '../types'
 
@@ -11,6 +12,7 @@ interface RoutePanelProps {
   metadata: MetadataResponse | null
   startLocation: SelectedLocation | null
   endLocation: SelectedLocation | null
+  waypoints: RouteStop[]
   pendingMapClick: PendingMapClick | null
   selectedAlgorithm: RouteAlgorithm
   selectedObjective: RouteObjective
@@ -18,14 +20,15 @@ interface RoutePanelProps {
   balancedWeight: number
   avoidHighway: boolean
   preferMainRoad: boolean
-  showDatasetBounds: boolean
   onAlgorithmChange: (algorithm: RouteAlgorithm) => void
   onObjectiveChange: (objective: RouteObjective) => void
   onCompareModeChange: (value: boolean) => void
   onBalancedWeightChange: (value: number) => void
   onAvoidHighwayChange: (value: boolean) => void
   onPreferMainRoadChange: (value: boolean) => void
-  onShowDatasetBoundsChange: (value: boolean) => void
+  onAddWaypoint: () => void
+  onRemoveWaypoint: (index: number) => void
+  onClearWaypoints: () => void
   onApplyPendingStart: () => void
   onApplyPendingEnd: () => void
   onClearPending: () => void
@@ -45,6 +48,7 @@ export function RoutePanel({
   metadata,
   startLocation,
   endLocation,
+  waypoints,
   pendingMapClick,
   selectedAlgorithm,
   selectedObjective,
@@ -52,14 +56,15 @@ export function RoutePanel({
   balancedWeight,
   avoidHighway,
   preferMainRoad,
-  showDatasetBounds,
   onAlgorithmChange,
   onObjectiveChange,
   onCompareModeChange,
   onBalancedWeightChange,
   onAvoidHighwayChange,
   onPreferMainRoadChange,
-  onShowDatasetBoundsChange,
+  onAddWaypoint,
+  onRemoveWaypoint,
+  onClearWaypoints,
   onApplyPendingStart,
   onApplyPendingEnd,
   onClearPending,
@@ -88,6 +93,19 @@ export function RoutePanel({
       </div>
 
       <LocationCard title="Start" location={startLocation} onClear={onClearStart} />
+
+      {waypoints.length > 0 && (
+        <div className="waypoints-list">
+          {waypoints.map((wp, i) => (
+            <div key={i} className="waypoint-chip">
+              <span className="waypoint-chip__label">Stop {i + 1}: {wp.label}</span>
+              <button type="button" className="waypoint-chip__remove" onClick={() => onRemoveWaypoint(i)}>&times;</button>
+            </div>
+          ))}
+          <button type="button" className="link-button" onClick={onClearWaypoints}>Clear all stops</button>
+        </div>
+      )}
+
       <LocationCard title="End" location={endLocation} onClear={onClearEnd} />
 
       {pendingMapClick && (
@@ -102,6 +120,9 @@ export function RoutePanel({
           <div className="pending-card__actions">
             <button type="button" className="small-button" onClick={onApplyPendingStart}>
               Set Start
+            </button>
+            <button type="button" className="small-button" onClick={onAddWaypoint}>
+              Add Stop
             </button>
             <button type="button" className="small-button" onClick={onApplyPendingEnd}>
               Set End
@@ -214,26 +235,6 @@ export function RoutePanel({
         </div>
       ) : null}
 
-      <div className="option-box">
-        <div className="option-box__title">Debug Map Overlays</div>
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={showDatasetBounds}
-            onChange={event => onShowDatasetBoundsChange(event.target.checked)}
-          />
-          <span>Show dataset bounds</span>
-        </label>
-      </div>
-
-      <div className="future-box">
-        <div className="future-box__title">Compare Preview</div>
-        <div className="future-box__text">
-          This demo compares the same start/end across distance, time, and balanced objectives using
-          repeated route requests.
-        </div>
-      </div>
-
       {nearestLoading && <div className="panel-message">Snapping to nearest routable point...</div>}
       {nearestError && <div className="panel-message panel-message--error">{nearestError}</div>}
       {routeError && <div className="panel-message panel-message--error">{routeError}</div>}
@@ -248,6 +249,18 @@ export function RoutePanel({
         <button type="button" className="secondary-button" onClick={onResetAll}>
           Reset All
         </button>
+        {startLocation && endLocation && (
+          <button
+            type="button"
+            className="small-button"
+            onClick={() => {
+              void navigator.clipboard.writeText(window.location.href)
+              alert('Link copied to clipboard!')
+            }}
+          >
+            Share Route Link
+          </button>
+        )}
       </div>
     </section>
   )

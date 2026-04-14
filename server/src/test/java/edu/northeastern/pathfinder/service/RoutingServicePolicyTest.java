@@ -119,7 +119,6 @@ class RoutingServicePolicyTest {
         return new Edge(
                 toNodeId,
                 distanceMeters,
-                null,
                 highway,
                 maxspeedRaw,
                 null,

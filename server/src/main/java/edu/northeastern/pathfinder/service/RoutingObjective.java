@@ -11,7 +11,8 @@ import java.util.Locale;
 public enum RoutingObjective {
     DISTANCE("distance"),
     TIME("time"),
-    BALANCED("balanced");
+    BALANCED("balanced"),
+    SAFE_WALK("safe_walk");
 
     private final String apiValue;
 

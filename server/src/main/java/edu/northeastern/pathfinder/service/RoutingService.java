@@ -134,7 +134,8 @@ public class RoutingService {
         return List.of(
                 RoutingObjective.DISTANCE.apiValue(),
                 RoutingObjective.TIME.apiValue(),
-                RoutingObjective.BALANCED.apiValue()
+                RoutingObjective.BALANCED.apiValue(),
+                RoutingObjective.SAFE_WALK.apiValue()
         );
     }
 

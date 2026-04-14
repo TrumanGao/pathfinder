@@ -1,4 +1,7 @@
 import type {
+  Annotation,
+  AnnotationCategory,
+  AnnotationListResponse,
   MetadataResponse,
   NearestResponse,
   RouteRequest,
@@ -54,6 +57,71 @@ export async function getNearest(params: {
   })
 
   return apiFetch<NearestResponse>(`/api/nearest?${searchParams.toString()}`)
+}
+
+export async function searchNearby(params: {
+  lat: number
+  lon: number
+  types?: string[]
+  tags?: string[]
+  radius?: number
+  limit?: number
+}): Promise<SearchResponse> {
+  const searchParams = new URLSearchParams({
+    lat: String(params.lat),
+    lon: String(params.lon),
+  })
+
+  for (const type of params.types ?? []) {
+    if (type.trim()) {
+      searchParams.append('types', type)
+    }
+  }
+
+  for (const tag of params.tags ?? []) {
+    if (tag.trim()) {
+      searchParams.append('tags', tag)
+    }
+  }
+
+  if (typeof params.radius === 'number') {
+    searchParams.set('radius', String(params.radius))
+  }
+
+  if (typeof params.limit === 'number') {
+    searchParams.set('limit', String(params.limit))
+  }
+
+  return apiFetch<SearchResponse>(`/api/search/nearby?${searchParams.toString()}`)
+}
+
+export async function getAnnotations(params: {
+  lat: number
+  lon: number
+  radius?: number
+}): Promise<AnnotationListResponse> {
+  const searchParams = new URLSearchParams({
+    lat: String(params.lat),
+    lon: String(params.lon),
+  })
+  if (typeof params.radius === 'number') {
+    searchParams.set('radius', String(params.radius))
+  }
+  return apiFetch<AnnotationListResponse>(`/api/annotations?${searchParams.toString()}`)
+}
+
+export async function createAnnotation(params: {
+  lat: number
+  lon: number
+  category: AnnotationCategory
+  text: string
+  author?: string
+}): Promise<Annotation> {
+  return apiFetch<Annotation>('/api/annotations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
 }
 
 export async function getRoute(request: RouteRequest): Promise<RouteResponse> {

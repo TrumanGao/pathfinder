@@ -1,7 +1,5 @@
 package edu.northeastern.pathfinder.graph;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -15,7 +13,6 @@ public final class Edge {
     private final String toNodeId;
     private final double segmentDistanceMeters;
 
-    private final String sourceFeatureId;
     private final String highway;
     private final String maxspeedRaw;
     private final String onewayRaw;
@@ -26,7 +23,6 @@ public final class Edge {
     public Edge(
             String toNodeId,
             double segmentDistanceMeters,
-            String sourceFeatureId,
             String highway,
             String maxspeedRaw,
             String onewayRaw,
@@ -35,14 +31,14 @@ public final class Edge {
     ) {
         this.toNodeId = Objects.requireNonNull(toNodeId, "toNodeId must not be null");
         this.segmentDistanceMeters = segmentDistanceMeters;
-        this.sourceFeatureId = sourceFeatureId;
         this.highway = highway;
         this.maxspeedRaw = maxspeedRaw;
         this.onewayRaw = onewayRaw;
         this.roadName = roadName;
 
-        Map<String, Object> copy = (rawTags == null) ? new HashMap<>() : new HashMap<>(rawTags);
-        this.rawTags = Collections.unmodifiableMap(copy);
+        // Accept pre-built unmodifiable maps from GeoJsonLoader without defensive copy.
+        // Falls back to wrapping for safety if called from elsewhere.
+        this.rawTags = (rawTags == null) ? Map.of() : rawTags;
     }
 
     public String getToNodeId() {
@@ -51,10 +47,6 @@ public final class Edge {
 
     public double getSegmentDistanceMeters() {
         return segmentDistanceMeters;
-    }
-
-    public String getSourceFeatureId() {
-        return sourceFeatureId;
     }
 
     public String getHighway() {

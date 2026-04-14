@@ -62,7 +62,6 @@ public final class GeoJsonGraphBuilder {
             report.incrementLineStringRoadFeatures();
 
             Map<String, Object> rawTags = copyRawProperties(properties);
-            String sourceFeatureId = textOrNull(feature.get("id"));
             String maxspeedRaw = textOrNull(properties.get("maxspeed"));
             String onewayRaw = textOrNull(properties.get("oneway"));
             String roadName = textOrNull(properties.get("name"));
@@ -85,7 +84,6 @@ public final class GeoJsonGraphBuilder {
                     Edge forward = new Edge(
                             to.nodeId,
                             meters,
-                            sourceFeatureId,
                             highway,
                             maxspeedRaw,
                             onewayRaw,
@@ -100,7 +98,6 @@ public final class GeoJsonGraphBuilder {
                     Edge reverse = new Edge(
                             from.nodeId,
                             meters,
-                            sourceFeatureId,
                             highway,
                             maxspeedRaw,
                             onewayRaw,

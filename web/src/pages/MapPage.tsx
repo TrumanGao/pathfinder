@@ -9,6 +9,7 @@ import type {
   MetadataResponse,
   PendingMapClick,
   RouteAlgorithm,
+  RouteObjective,
   RouteRequest,
   RouteResponse,
   SearchResult,
@@ -17,6 +18,7 @@ import type {
 
 const DEFAULT_CENTER: [number, number] = [38.8951, -77.0703]
 const DEFAULT_ZOOM = 14
+const COMPARE_OBJECTIVES: RouteObjective[] = ['distance', 'time', 'balanced']
 
 /**
  * EN: Main page/container for the rebuilt map application.
@@ -42,9 +44,15 @@ export function MapPage() {
   const [nearestError, setNearestError] = useState<string | null>(null)
 
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<RouteAlgorithm>('astar')
-  const [routeResult, setRouteResult] = useState<RouteResponse | null>(null)
+  const [selectedObjective, setSelectedObjective] = useState<RouteObjective>('distance')
+  const [compareMode, setCompareMode] = useState(false)
+  const [balancedWeight, setBalancedWeight] = useState(0.5)
+  const [avoidHighway, setAvoidHighway] = useState(false)
+  const [preferMainRoad, setPreferMainRoad] = useState(false)
+  const [routeResults, setRouteResults] = useState<RouteResponse[]>([])
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
+  const [showDatasetBounds, setShowDatasetBounds] = useState(false)
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_CENTER)
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM)
@@ -58,6 +66,8 @@ export function MapPage() {
         if (!active) return
         setMetadata(data)
         setSelectedAlgorithm(data.defaultAlgorithm)
+        setSelectedObjective(data.routing.defaultObjective)
+        setBalancedWeight(data.routing.defaultWeights.timeWeight)
       } catch (error) {
         if (!active) return
         setMetadataError(error instanceof Error ? error.message : 'Failed to load metadata')
@@ -72,9 +82,15 @@ export function MapPage() {
 
   const canRoute = Boolean(startLocation && endLocation && !routeLoading)
 
-  const routePolyline = useMemo(
-    () => routeResult?.path.map(point => [point.lat, point.lon] as [number, number]) ?? [],
-    [routeResult],
+  const routeOverlays = useMemo(
+    () =>
+      routeResults
+        .filter(route => route.path.length > 1)
+        .map(route => ({
+          objective: route.objective,
+          path: route.path.map(point => [point.lat, point.lon] as [number, number]),
+        })),
+    [routeResults],
   )
 
   async function handleSearchSubmit() {
@@ -195,31 +211,68 @@ export function MapPage() {
     setPendingMapClick(null)
   }
 
+  function buildRouteRequest(objective: RouteObjective): RouteRequest | null {
+    if (!startLocation || !endLocation) {
+      return null
+    }
+
+    const request: RouteRequest = {
+      start: { nodeId: startLocation.nodeId },
+      end: { nodeId: endLocation.nodeId },
+      algorithm: selectedAlgorithm,
+      objective,
+      roadPreferences: {
+        avoidHighway,
+        preferMainRoad,
+      },
+    }
+
+    if (objective === 'balanced') {
+      request.weights = {
+        distanceWeight: 1 - balancedWeight,
+        timeWeight: balancedWeight,
+      }
+    }
+
+    return request
+  }
+
   async function handleRouteSubmit() {
     if (!startLocation || !endLocation) return
 
     setRouteLoading(true)
     setRouteError(null)
 
-    const request: RouteRequest = {
-      start: { nodeId: startLocation.nodeId },
-      end: { nodeId: endLocation.nodeId },
-      algorithm: selectedAlgorithm,
-    }
-
     try {
-      const response = await getRoute(request)
-      setRouteResult(response)
+      if (compareMode) {
+        const results: RouteResponse[] = []
+        for (const objective of COMPARE_OBJECTIVES) {
+          const request = buildRouteRequest(objective)
+          if (!request) {
+            continue
+          }
+          const response = await getRoute(request)
+          results.push(response)
+        }
+        setRouteResults(results)
+      } else {
+        const request = buildRouteRequest(selectedObjective)
+        if (!request) {
+          return
+        }
+        const response = await getRoute(request)
+        setRouteResults([response])
+      }
     } catch (error) {
       setRouteError(error instanceof Error ? error.message : 'Failed to load route')
-      setRouteResult(null)
+      setRouteResults([])
     } finally {
       setRouteLoading(false)
     }
   }
 
   function handleClearRoute() {
-    setRouteResult(null)
+    setRouteResults([])
     setRouteError(null)
   }
 
@@ -231,10 +284,16 @@ export function MapPage() {
     setStartLocation(null)
     setEndLocation(null)
     setPendingMapClick(null)
-    setRouteResult(null)
+    setSelectedObjective(metadata?.routing.defaultObjective ?? 'distance')
+    setCompareMode(false)
+    setBalancedWeight(metadata?.routing.defaultWeights.timeWeight ?? 0.5)
+    setAvoidHighway(false)
+    setPreferMainRoad(false)
+    setRouteResults([])
     setSearchError(null)
     setNearestError(null)
     setRouteError(null)
+    setShowDatasetBounds(false)
     setMapCenter(DEFAULT_CENTER)
     setMapZoom(DEFAULT_ZOOM)
   }
@@ -264,7 +323,19 @@ export function MapPage() {
           endLocation={endLocation}
           pendingMapClick={pendingMapClick}
           selectedAlgorithm={selectedAlgorithm}
+          selectedObjective={selectedObjective}
+          compareMode={compareMode}
+          balancedWeight={balancedWeight}
+          avoidHighway={avoidHighway}
+          preferMainRoad={preferMainRoad}
+          showDatasetBounds={showDatasetBounds}
           onAlgorithmChange={setSelectedAlgorithm}
+          onObjectiveChange={setSelectedObjective}
+          onCompareModeChange={setCompareMode}
+          onBalancedWeightChange={setBalancedWeight}
+          onAvoidHighwayChange={setAvoidHighway}
+          onPreferMainRoadChange={setPreferMainRoad}
+          onShowDatasetBoundsChange={setShowDatasetBounds}
           onApplyPendingStart={() => applyPendingMapClick('start')}
           onApplyPendingEnd={() => applyPendingMapClick('end')}
           onClearPending={() => setPendingMapClick(null)}
@@ -281,9 +352,14 @@ export function MapPage() {
         />
 
         <RouteSummary
-          route={routeResult}
+          routes={routeResults}
           startLocation={startLocation}
           endLocation={endLocation}
+          selectedObjective={selectedObjective}
+          compareMode={compareMode}
+          balancedWeight={balancedWeight}
+          avoidHighway={avoidHighway}
+          preferMainRoad={preferMainRoad}
         />
 
         {metadataError && <div className="panel-message panel-message--error">{metadataError}</div>}
@@ -297,7 +373,8 @@ export function MapPage() {
         startLocation={startLocation}
         endLocation={endLocation}
         pendingMapClick={pendingMapClick}
-        routePath={routePolyline}
+        routeOverlays={routeOverlays}
+        showDatasetBounds={showDatasetBounds}
         onMapClick={latlng => void handleMapClick(latlng.lat, latlng.lng)}
         onSelectSearchResult={setSelectedSearchResult}
         onSetSearchResultStart={result => void assignSearchResult('start', result)}

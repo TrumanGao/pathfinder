@@ -29,6 +29,7 @@ public class RoutingService {
     private final NearestNodeService nearestNodeService;
     private final RoutingProperties properties;
     private final RoutingCostPolicy routingCostPolicy;
+    private final SpeedResolver speedResolver;
     private final ShortestPathAlgorithm astar = new AStarShortestPath();
     private final ShortestPathAlgorithm dijkstra = new DijkstraShortestPath();
     private final GraphBounds bounds;
@@ -37,12 +38,14 @@ public class RoutingService {
             Graph graph,
             NearestNodeService nearestNodeService,
             RoutingProperties properties,
-            RoutingCostPolicy routingCostPolicy
+            RoutingCostPolicy routingCostPolicy,
+            SpeedResolver speedResolver
     ) {
         this.graph = graph;
         this.nearestNodeService = nearestNodeService;
         this.properties = properties;
         this.routingCostPolicy = routingCostPolicy;
+        this.speedResolver = speedResolver;
         this.bounds = calculateBounds();
     }
 
@@ -60,7 +63,20 @@ public class RoutingService {
         long t1 = System.nanoTime();
 
         double distanceMeters = pathResult.isPathFound() ? computePathDistanceMeters(pathResult.getPathNodeIds()) : Double.POSITIVE_INFINITY;
-        return new RouteComputation(algorithm, options, start, end, pathResult, distanceMeters, (t1 - t0) / 1_000_000L);
+        double estimatedTravelTimeSeconds = pathResult.isPathFound()
+                ? computePathTravelTimeSeconds(pathResult.getPathNodeIds())
+                : Double.POSITIVE_INFINITY;
+
+        return new RouteComputation(
+                algorithm,
+                options,
+                start,
+                end,
+                pathResult,
+                distanceMeters,
+                estimatedTravelTimeSeconds,
+                (t1 - t0) / 1_000_000L
+        );
     }
 
     public NodeReference getNodeReferenceByGraphNodeId(String graphNodeId) {
@@ -163,20 +179,42 @@ public class RoutingService {
 
         double total = 0.0;
         for (int i = 0; i < pathNodeIds.size() - 1; i++) {
-            total += lookupSegmentDistance(pathNodeIds.get(i), pathNodeIds.get(i + 1));
+            total += lookupBestEdge(pathNodeIds.get(i), pathNodeIds.get(i + 1)).getSegmentDistanceMeters();
         }
         return total;
     }
 
-    private double lookupSegmentDistance(String fromNodeId, String toNodeId) {
+    /**
+     * EN: Estimated travel time is derived from the final chosen path using the same simple
+     * speed-resolution rules already used by time-based routing. It is a lightweight estimate,
+     * not live traffic or turn-delay modeling.
+     * 中文：预计通行时间根据最终选中的路径计算，并复用当前时间路由所使用的速度解析规则。
+     * 这是轻量级估算，不包含实时交通或转向延迟建模。
+     */
+    private double computePathTravelTimeSeconds(List<String> pathNodeIds) {
+        if (pathNodeIds.size() < 2) {
+            return 0.0;
+        }
+
+        double total = 0.0;
+        for (int i = 0; i < pathNodeIds.size() - 1; i++) {
+            Edge edge = lookupBestEdge(pathNodeIds.get(i), pathNodeIds.get(i + 1));
+            total += edge.getSegmentDistanceMeters() / speedResolver.resolveMetersPerSecond(edge);
+        }
+        return total;
+    }
+
+    private Edge lookupBestEdge(String fromNodeId, String toNodeId) {
+        Edge bestEdge = null;
         double bestDistance = Double.POSITIVE_INFINITY;
         for (Edge edge : graph.getOutgoing(fromNodeId)) {
             if (toNodeId.equals(edge.getToNodeId()) && edge.getSegmentDistanceMeters() < bestDistance) {
                 bestDistance = edge.getSegmentDistanceMeters();
+                bestEdge = edge;
             }
         }
-        if (Double.isFinite(bestDistance)) {
-            return bestDistance;
+        if (bestEdge != null) {
+            return bestEdge;
         }
         throw new IllegalStateException("Path references missing edge from " + fromNodeId + " to " + toNodeId);
     }
@@ -244,6 +282,7 @@ public class RoutingService {
             ResolvedLocation end,
             PathfindingResult pathResult,
             double distanceMeters,
+            double estimatedTravelTimeSeconds,
             long durationMs
     ) {
     }

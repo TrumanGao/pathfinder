@@ -75,6 +75,7 @@ public class RouteController {
                 ),
                 path,
                 route.pathResult().isPathFound() ? route.distanceMeters() : null,
+                route.pathResult().isPathFound() ? route.estimatedTravelTimeSeconds() : null,
                 path.size()
         );
     }

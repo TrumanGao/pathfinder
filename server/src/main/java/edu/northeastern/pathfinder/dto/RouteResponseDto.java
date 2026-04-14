@@ -19,6 +19,7 @@ public record RouteResponseDto(
         ResolvedRouteLocationDto end,
         List<RoutePathNodeDto> path,
         Double distanceM,
+        Double estimatedTimeSeconds,
         int pathNodeCount
 ) {
     /**

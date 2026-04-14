@@ -1,4 +1,6 @@
 export type RouteAlgorithm = 'astar' | 'dijkstra'
+export type RouteObjective = 'distance' | 'time' | 'balanced'
+export type RoadPreferenceKey = 'avoidHighway' | 'preferMainRoad'
 
 export interface SearchResult {
   id: number
@@ -37,10 +39,23 @@ export interface RouteLocationInput {
   lon?: number
 }
 
+export interface RouteWeights {
+  distanceWeight?: number
+  timeWeight?: number
+}
+
+export interface RouteRoadPreferences {
+  avoidHighway?: boolean
+  preferMainRoad?: boolean
+}
+
 export interface RouteRequest {
   start: RouteLocationInput
   end: RouteLocationInput
   algorithm?: RouteAlgorithm
+  objective?: RouteObjective
+  weights?: RouteWeights
+  roadPreferences?: RouteRoadPreferences
 }
 
 export interface RouteResolvedLocation {
@@ -60,10 +75,12 @@ export interface RoutePathNode {
 export interface RouteResponse {
   success: boolean
   algorithm: RouteAlgorithm
+  objective: RouteObjective
   start: RouteResolvedLocation
   end: RouteResolvedLocation
   path: RoutePathNode[]
   distanceM: number | null
+  estimatedTimeSeconds: number | null
   pathNodeCount: number
 }
 
@@ -76,7 +93,14 @@ export interface MetadataResponse {
     maxLimit: number
   }
   routing: {
-    supportedObjectives: string[]
+    supportedObjectives: RouteObjective[]
+    defaultObjective: RouteObjective
+    defaultWeights: {
+      distanceWeight: number
+      timeWeight: number
+    }
+    supportedRoadPreferences: RoadPreferenceKey[]
+    defaultAlgorithm: RouteAlgorithm
   }
   dataset?: {
     nodeCount: number

@@ -53,7 +53,7 @@ class RoutingServicePolicyTest {
         NearestNodeService nearestNodeService = new NearestNodeService(graph, new NearestNodeProperties());
         SpeedResolver speedResolver = new SpeedResolver(routingProperties);
         RoutingCostPolicy routingCostPolicy = new RoutingCostPolicy(routingProperties, speedResolver);
-        routingService = new RoutingService(graph, nearestNodeService, routingProperties, routingCostPolicy);
+        routingService = new RoutingService(graph, nearestNodeService, routingProperties, routingCostPolicy, speedResolver);
     }
 
     @Test

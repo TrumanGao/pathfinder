@@ -9,6 +9,7 @@ import type {
   MetadataResponse,
   PendingMapClick,
   RouteAlgorithm,
+  RouteObjective,
   RouteRequest,
   RouteResponse,
   SearchResult,
@@ -18,12 +19,7 @@ import type {
 const DEFAULT_CENTER: [number, number] = [38.8951, -77.0703]
 const DEFAULT_ZOOM = 14
 
-/**
- * EN: Main page/container for the rebuilt map application.
- * The state shape stays explicit and lightweight so search, snapping, and routing remain easy to trace.
- * 中文：重建后地图应用的主页面容器。
- * 状态结构刻意保持显式和轻量，方便团队理解搜索、吸附和路由的完整流转。
- */
+/** Main page container: wires search, nearest-node snapping, and routing. */
 export function MapPage() {
   const [metadata, setMetadata] = useState<MetadataResponse | null>(null)
   const [metadataError, setMetadataError] = useState<string | null>(null)
@@ -42,6 +38,9 @@ export function MapPage() {
   const [nearestError, setNearestError] = useState<string | null>(null)
 
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<RouteAlgorithm>('astar')
+  const [selectedObjective, setSelectedObjective] = useState<RouteObjective>('distance')
+  const [avoidHighway, setAvoidHighway] = useState(false)
+  const [preferMainRoad, setPreferMainRoad] = useState(false)
   const [routeResult, setRouteResult] = useState<RouteResponse | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
@@ -58,6 +57,9 @@ export function MapPage() {
         if (!active) return
         setMetadata(data)
         setSelectedAlgorithm(data.defaultAlgorithm)
+        if (data.routing?.defaultObjective) {
+          setSelectedObjective(data.routing.defaultObjective)
+        }
       } catch (error) {
         if (!active) return
         setMetadataError(error instanceof Error ? error.message : 'Failed to load metadata')
@@ -205,6 +207,11 @@ export function MapPage() {
       start: { nodeId: startLocation.nodeId },
       end: { nodeId: endLocation.nodeId },
       algorithm: selectedAlgorithm,
+      objective: selectedObjective,
+      roadPreferences: {
+        avoidHighway,
+        preferMainRoad,
+      },
     }
 
     try {
@@ -235,6 +242,8 @@ export function MapPage() {
     setSearchError(null)
     setNearestError(null)
     setRouteError(null)
+    setAvoidHighway(false)
+    setPreferMainRoad(false)
     setMapCenter(DEFAULT_CENTER)
     setMapZoom(DEFAULT_ZOOM)
   }
@@ -265,6 +274,12 @@ export function MapPage() {
           pendingMapClick={pendingMapClick}
           selectedAlgorithm={selectedAlgorithm}
           onAlgorithmChange={setSelectedAlgorithm}
+          selectedObjective={selectedObjective}
+          onObjectiveChange={setSelectedObjective}
+          avoidHighway={avoidHighway}
+          onAvoidHighwayChange={setAvoidHighway}
+          preferMainRoad={preferMainRoad}
+          onPreferMainRoadChange={setPreferMainRoad}
           onApplyPendingStart={() => applyPendingMapClick('start')}
           onApplyPendingEnd={() => applyPendingMapClick('end')}
           onClearPending={() => setPendingMapClick(null)}

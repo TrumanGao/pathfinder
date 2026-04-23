@@ -9,13 +9,8 @@ import org.springframework.stereotype.Component;
 import java.util.Locale;
 
 /**
- * EN: Computes effective edge cost for distance, time, and balanced routing objectives.
- * The policy is request-scoped through RoutingOptions, so different requests can use different
- * objectives and preferences without mutating graph weights. The implementation is intentionally
- * simple: small speed parsing, configurable defaults, and only two road preferences.
- * 中文：为 distance、time、balanced 路由目标计算有效边成本。
- * 该策略通过 RoutingOptions 保持在单次请求范围内，因此不同请求可以使用不同目标和偏好，
- * 而无需修改图上的全局权重。实现刻意保持简单：少量速度解析、可配置默认值，以及两个道路偏好。
+ * Builds a PathCostModel from per-request RoutingOptions.
+ * Supports distance / time / balanced objectives and road-preference multipliers.
  */
 @Component
 public class RoutingCostPolicy {
@@ -52,16 +47,8 @@ public class RoutingCostPolicy {
     }
 
     /**
-     * EN: Balanced objective uses a time-equivalent blend so both terms stay in the same unit.
-     * Formula:
-     * balanced = distanceWeight * (distance / referenceSpeed)
-     *          + timeWeight * actualTime
-     * This is intentionally simple and does not yet model junction delay or traffic.
-     * 中文：balanced 目标使用时间等价的混合方式，保证两项都处于同一单位。
-     * 公式：
-     * balanced = distanceWeight * (distance / referenceSpeed)
-     *          + timeWeight * actualTime
-     * 本阶段刻意保持简单，不建模路口延迟或交通流量。
+     * Balanced blend, unified in seconds:
+     * balanced = distanceWeight * (distance / referenceSpeed) + timeWeight * actualTime
      */
     private double balancedCostSeconds(Edge edge, RoutingOptions.BalancedWeights weights) {
         double distance = edge.getSegmentDistanceMeters();
@@ -82,12 +69,7 @@ public class RoutingCostPolicy {
         return edge.getSegmentDistanceMeters() / speedResolver.resolveMetersPerSecond(edge);
     }
 
-    /**
-     * EN: Road preferences are implemented as small configurable multipliers on top of the chosen
-     * base objective cost. This phase only supports avoidHighway and preferMainRoad.
-     * 中文：道路偏好通过作用在基础目标成本之上的小倍率实现。
-     * 本阶段只支持 avoidHighway 和 preferMainRoad。
-     */
+    /** Applies configurable multipliers for the avoidHighway / preferMainRoad flags. */
     private double roadPreferenceMultiplier(Edge edge, RoutingOptions.RoadPreferences preferences) {
         String highway = normalize(edge.getHighway());
         if (highway == null) {

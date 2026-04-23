@@ -15,13 +15,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * EN: Orchestrates route computation on top of the existing graph and pathfinding implementations.
- * It resolves inputs, parses request-scoped routing options, chooses A* or Dijkstra, and applies
- * the current edge-cost policy layer. It may call NearestNodeService when coordinates are given,
- * but it does not reimplement nearest-node lookup and it does not own search responsibilities.
- * 中文：基于现有图结构与寻路实现协调路由计算。
- * 它负责解析输入、处理单次请求范围内的路由选项、选择 A* 或 Dijkstra，并应用当前边成本策略层。
- * 当提供坐标时它可以调用 NearestNodeService，但不会在内部重复实现最近节点查找，也不承担搜索职责。
+ * Orchestrates routing: resolves endpoints, builds a PathCostModel,
+ * selects A* / Dijkstra, and returns the computed path with metadata.
  */
 @Service
 public class RoutingService {

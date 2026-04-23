@@ -2,12 +2,7 @@ package edu.northeastern.pathfinder.service;
 
 import java.util.Locale;
 
-/**
- * EN: Supported routing objectives that are actually implemented in this phase.
- * The set is intentionally small: distance, time, and balanced.
- * 中文：本阶段真实实现的路由目标。
- * 目前刻意保持很小的范围：distance、time、balanced。
- */
+/** Supported routing objectives: distance, time, balanced. */
 public enum RoutingObjective {
     DISTANCE("distance"),
     TIME("time"),

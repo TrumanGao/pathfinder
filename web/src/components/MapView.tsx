@@ -39,10 +39,7 @@ const pendingIcon = divIcon({
   iconAnchor: [14, 28],
 })
 
-/**
- * EN: Main Leaflet map view.
- * 中文：主 Leaflet 地图视图。
- */
+/** Main Leaflet map view. */
 export function MapView({
   center,
   zoom,
@@ -164,10 +161,7 @@ function MapViewportSync({
   return null
 }
 
-/**
- * EN: Explicit map click flow for snapping to nearest routable points.
- * 中文：用于最近可路由点吸附的显式地图点击流程。
- */
+/** Map click handler: emits lat/lng to the parent for nearest-node snapping. */
 function MapClickHandler({
   onMapClick,
 }: {

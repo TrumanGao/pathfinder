@@ -225,8 +225,7 @@
 }
 
 .location-card,
-.pending-card,
-.future-box {
+.pending-card {
   border: 1px solid #dbe2ea;
   border-radius: 14px;
   padding: 12px;
@@ -260,16 +259,6 @@
 .location-card__empty {
   margin-top: 8px;
   color: #94a3b8;
-}
-
-.future-box__title {
-  font-weight: 700;
-}
-
-.future-box__text {
-  margin-top: 4px;
-  color: #64748b;
-  font-size: 0.875rem;
 }
 
 .summary-grid {

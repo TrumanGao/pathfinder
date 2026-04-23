@@ -6,12 +6,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * EN: Tunable routing defaults for the current edge-cost policy layer.
- * It keeps configuration readable: objective defaults, balanced weights, speed fallbacks,
- * and small road-preference multipliers. It does not try to model every OSM rule.
- * 中文：当前边成本策略层的可调路由默认配置。
- * 配置内容保持可读、可调：默认目标、balanced 权重、速度回退规则，以及少量道路偏好倍率。
- * 本阶段不尝试覆盖所有 OSM 规则。
+ * Tunable defaults for the edge-cost policy: objective, balanced weights,
+ * per-highway speeds, and road-preference multipliers.
  */
 @ConfigurationProperties(prefix = "pathfinder.routing")
 public class RoutingProperties {

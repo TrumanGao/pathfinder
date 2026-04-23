@@ -21,16 +21,8 @@ import java.util.TreeSet;
 import java.util.function.Function;
 
 /**
- * EN: Builds a minimal but extensible internal search model directly from GeoJSON.
- * The current implementation keeps search simple: substring matching, optional type filtering,
- * lightweight metadata, and a stable type/subType normalization layer.
- * It does not try to be a full search engine, a fuzzy matcher, or an exhaustive OSM taxonomy.
- * The dataset is intentionally small and readable in this phase, while still supporting future
- * categories such as transport, airport, stadium, hospital, or school without redesign.
- * 中文：直接从 GeoJSON 构建一个最小但可扩展的内部搜索模型。
- * 当前实现刻意保持简单：子串匹配、可选 type 过滤、轻量 metadata，以及稳定的 type/subType 归一化层。
- * 它并不试图成为完整搜索引擎、模糊匹配系统，也不追求穷举所有 OSM 标签分类。
- * 本阶段的数据模型有意保持小而易读，同时仍可支持未来的 transport、airport、stadium、hospital、school 等类别而无需重构。
+ * Builds a normalized search index from GeoJSON features.
+ * Supports substring matching, type filtering, and a stable type/subType classification.
  */
 @Service
 public class SearchService {
@@ -39,13 +31,7 @@ public class SearchService {
             "aeroway", "railway", "public_transport", "addr:street"
     );
 
-    /**
-     * EN: Ordered normalization rules that map a small selected subset of OSM-like tags into
-     * stable search categories. The structure is intentionally general and easy to extend later,
-     * but it does not attempt full OSM coverage in this phase.
-     * 中文：按顺序执行的归一化规则，将一小部分精选 OSM 风格标签映射为稳定的搜索类别。
-     * 该结构刻意保持通用且便于后续扩展，但本阶段并不试图覆盖完整 OSM 分类。
-     */
+    /** Ordered rules mapping OSM-like tags into stable (type, subType) categories. */
     private static final List<ClassificationRule> CLASSIFICATION_RULES = List.of(
             ClassificationRule.byValue("amenity", Map.ofEntries(
                     Map.entry("restaurant", SearchCategory.of("food", "restaurant")),
@@ -104,10 +90,6 @@ public class SearchService {
         this.properties = properties;
         this.objectMapper = new ObjectMapper();
         this.items = Collections.unmodifiableList(loadItems(Paths.get(geoJsonPath)));
-    }
-
-    public List<SearchItem> search(String query, Integer limit) {
-        return search(query, List.of(), limit);
     }
 
     public List<SearchItem> search(String query, List<String> types, Integer limit) {
@@ -233,14 +215,8 @@ public class SearchService {
     }
 
     /**
-     * EN: Representative-coordinate rules are intentionally simple and deterministic:
-     * Point uses the direct coordinate, LineString uses the midpoint along the coordinate list,
-     * and Polygon / MultiPolygon use a bounding-box center approximation.
-     * This keeps the implementation stable without adding geometry libraries.
-     * 中文：代表性坐标规则刻意保持简单且确定性：
-     * Point 直接使用坐标，LineString 使用坐标序列中的中点，
-     * Polygon / MultiPolygon 使用包围盒中心近似。
-     * 这样可以在不引入几何库的前提下保持实现稳定可控。
+     * Picks a representative coordinate:
+     * Point -> self; LineString -> midpoint; Polygon / Multi* -> bounding-box center.
      */
     private Coordinate extractRepresentativeCoordinate(JsonNode geometryNode) {
         String geometryType = textOrNull(geometryNode.get("type"));
@@ -261,15 +237,7 @@ public class SearchService {
         return null;
     }
 
-    /**
-     * EN: Filtering is intentionally explainable rather than perfect.
-     * We keep named roads and named user-facing places/buildings/POIs, and skip entries with
-     * blank or obviously meaningless names. We also avoid keeping named features that cannot be
-     * normalized into a useful general category in this phase.
-     * 中文：过滤规则刻意追求“易解释”，而不是追求绝对完美。
-     * 我们保留有名称的道路，以及有意义名称的地点/建筑/POI；
-     * 同时跳过空名称、明显无意义的名称，以及本阶段无法归一化为有用通用类别的要素。
-     */
+    /** Keeps named roads / places / buildings / POIs that map to a known category. */
     private boolean shouldInclude(GeoJsonFeatureContext context, SearchCategory category) {
         if (!isMeaningfulName(context.name())) {
             return false;

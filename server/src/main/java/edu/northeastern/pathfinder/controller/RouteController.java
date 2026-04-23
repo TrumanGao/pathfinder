@@ -14,12 +14,8 @@ import java.util.List;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 /**
- * EN: Route API controller for the current routing capability.
- * It exposes node-id or coordinate-based routing on top of the existing graph, with the real
- * supported objectives only: distance, time, and balanced.
- * 中文：面向当前路由能力的接口控制器。
- * 它在现有图结构之上暴露基于 nodeId 或坐标的路由，并且只支持真实已实现的目标：
- * distance、time、balanced。
+ * Computes a route between two endpoints (nodeId or coordinates).
+ * Supports distance / time / balanced objectives.
  */
 @RestController
 @RequestMapping("/api")
@@ -30,15 +26,6 @@ public class RouteController {
         this.routingService = routingService;
     }
 
-    /**
-     * EN: Computes a route between start and end using either nodeId inputs or coordinate inputs.
-     * If coordinates are provided, the backend snaps them to nearest routable graph nodes first.
-     * Current limitations: only A* / Dijkstra and the current edge-cost policy are implemented;
-     * this endpoint does not expose unsupported future routing systems.
-     * 中文：使用起点和终点计算路线，输入既可以是 nodeId，也可以是坐标。
-     * 如果提供的是坐标，后端会先将其吸附到最近的可路由图节点。
-     * 当前限制：只实现了 A* / Dijkstra 与当前边成本策略；该接口不会暴露尚未实现的未来路由系统。
-     */
     @PostMapping("/route")
     public RouteResponseDto route(@RequestBody RouteRequestDto request) {
         validateRouteRequest(request);

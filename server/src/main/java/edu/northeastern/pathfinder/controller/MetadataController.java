@@ -9,11 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * EN: Metadata API controller describing the backend capabilities that are actually implemented today.
- * It helps the frontend discover supported algorithms, search limits, route objectives,
- * and current road-preference support.
- * 中文：用于描述当前后端真实已实现能力的元数据接口控制器。
- * 它帮助前端了解支持的算法、搜索限制、路由目标，以及当前道路偏好支持情况。
+ * Reports backend capabilities: supported algorithms, search limits,
+ * routing objectives, road preferences, and dataset stats.
  */
 @RestController
 @RequestMapping("/api")
@@ -26,15 +23,10 @@ public class MetadataController {
         this.searchService = searchService;
     }
 
-    /**
-     * EN: Returns a lightweight capabilities summary for the current backend.
-     * Only currently implemented objectives and road preferences are exposed.
-     * 中文：返回当前后端能力的轻量级摘要。
-     * 这里只暴露已经真实实现的目标和道路偏好。
-     */
     @GetMapping("/metadata")
     public MetadataResponseDto metadata() {
         RoutingOptions.BalancedWeights defaultWeights = routingService.getDefaultBalancedWeights();
+        RoutingService.GraphBounds bounds = routingService.getBounds();
         return new MetadataResponseDto(
                 routingService.getSupportedAlgorithms(),
                 routingService.getDefaultAlgorithm(),
@@ -56,6 +48,12 @@ public class MetadataController {
                 new MetadataResponseDto.DatasetMetadataDto(
                         routingService.getNodeCount(),
                         routingService.getEdgeCount()
+                ),
+                new MetadataResponseDto.MapBoundsDto(
+                        bounds.minLat(),
+                        bounds.maxLat(),
+                        bounds.minLon(),
+                        bounds.maxLon()
                 )
         );
     }

@@ -1,5 +1,11 @@
 import { LocationCard } from './LocationCard'
-import type { MetadataResponse, PendingMapClick, RouteAlgorithm, SelectedLocation } from '../types'
+import type {
+  MetadataResponse,
+  PendingMapClick,
+  RouteAlgorithm,
+  RouteObjective,
+  SelectedLocation,
+} from '../types'
 
 interface RoutePanelProps {
   metadata: MetadataResponse | null
@@ -8,6 +14,12 @@ interface RoutePanelProps {
   pendingMapClick: PendingMapClick | null
   selectedAlgorithm: RouteAlgorithm
   onAlgorithmChange: (algorithm: RouteAlgorithm) => void
+  selectedObjective: RouteObjective
+  onObjectiveChange: (objective: RouteObjective) => void
+  avoidHighway: boolean
+  onAvoidHighwayChange: (value: boolean) => void
+  preferMainRoad: boolean
+  onPreferMainRoadChange: (value: boolean) => void
   onApplyPendingStart: () => void
   onApplyPendingEnd: () => void
   onClearPending: () => void
@@ -23,6 +35,12 @@ interface RoutePanelProps {
   routeError: string | null
 }
 
+const OBJECTIVE_LABELS: Record<RouteObjective, string> = {
+  distance: 'Shortest distance',
+  time: 'Fastest time',
+  balanced: 'Balanced',
+}
+
 export function RoutePanel({
   metadata,
   startLocation,
@@ -30,6 +48,12 @@ export function RoutePanel({
   pendingMapClick,
   selectedAlgorithm,
   onAlgorithmChange,
+  selectedObjective,
+  onObjectiveChange,
+  avoidHighway,
+  onAvoidHighwayChange,
+  preferMainRoad,
+  onPreferMainRoadChange,
   onApplyPendingStart,
   onApplyPendingEnd,
   onClearPending,
@@ -44,6 +68,9 @@ export function RoutePanel({
   nearestError,
   routeError,
 }: RoutePanelProps) {
+  const supportedObjectives = metadata?.routing?.supportedObjectives ?? ['distance', 'time', 'balanced']
+  const supportedRoadPreferences = metadata?.routing?.supportedRoadPreferences ?? ['avoidHighway', 'preferMainRoad']
+
   return (
     <section className="panel">
       <div className="panel__header">
@@ -97,12 +124,51 @@ export function RoutePanel({
         </select>
       </div>
 
-      <div className="future-box">
-        <div className="future-box__title">Objective</div>
-        <div className="future-box__text">
-          Distance is the only supported objective right now.
-        </div>
+      <div className="field-group">
+        <label className="field-label" htmlFor="objective-select">
+          Objective
+        </label>
+        <select
+          id="objective-select"
+          className="text-input"
+          value={selectedObjective}
+          onChange={event => onObjectiveChange(event.target.value as RouteObjective)}
+        >
+          {supportedObjectives.map(objective => (
+            <option key={objective} value={objective}>
+              {OBJECTIVE_LABELS[objective] ?? objective}
+            </option>
+          ))}
+        </select>
       </div>
+
+      {supportedRoadPreferences.length > 0 && (
+        <div className="field-group">
+          <span className="field-label">Road preferences</span>
+          <div className="filter-grid">
+            {supportedRoadPreferences.includes('avoidHighway') && (
+              <label className="checkbox-chip">
+                <input
+                  type="checkbox"
+                  checked={avoidHighway}
+                  onChange={event => onAvoidHighwayChange(event.target.checked)}
+                />
+                <span>Avoid highways</span>
+              </label>
+            )}
+            {supportedRoadPreferences.includes('preferMainRoad') && (
+              <label className="checkbox-chip">
+                <input
+                  type="checkbox"
+                  checked={preferMainRoad}
+                  onChange={event => onPreferMainRoadChange(event.target.checked)}
+                />
+                <span>Prefer main roads</span>
+              </label>
+            )}
+          </div>
+        </div>
+      )}
 
       {nearestLoading && <div className="panel-message">Snapping to nearest routable point…</div>}
       {nearestError && <div className="panel-message panel-message--error">{nearestError}</div>}

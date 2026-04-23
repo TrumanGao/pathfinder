@@ -9,10 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * EN: API controller for coordinate-to-nearest-routable-node lookup.
- * It exposes only the current snapping capability and does not perform routing by itself.
- * 中文：用于“坐标 -> 最近可路由节点”查询的接口控制器。
- * 它只暴露当前的吸附能力，本身不负责执行路线计算。
+ * Snaps an input coordinate to its nearest routable graph node.
  */
 @RestController
 @RequestMapping("/api")
@@ -25,12 +22,6 @@ public class NearestController {
         this.routingService = routingService;
     }
 
-    /**
-     * EN: Snaps input coordinates to the nearest routable graph node using the current linear-scan nearest-node service.
-     * Current limitations: no spatial index and no route computation in this endpoint.
-     * 中文：使用当前线性扫描的最近节点服务，将输入坐标吸附到最近的可路由图节点。
-     * 当前限制：该接口不使用空间索引，也不执行路线计算。
-     */
     @GetMapping("/nearest")
     public NearestResponseDto nearest(
             @RequestParam("lat") double lat,

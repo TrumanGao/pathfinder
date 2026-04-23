@@ -12,7 +12,7 @@ export function RouteSummary({ route, startLocation, endLocation }: RouteSummary
       <div className="panel__header">
         <div>
           <h2 className="panel__title">Route Summary</h2>
-          <p className="panel__subtitle">Current backend capability: distance-based routing only.</p>
+          <p className="panel__subtitle">Details of the most recent route calculation.</p>
         </div>
       </div>
 
@@ -21,6 +21,10 @@ export function RouteSummary({ route, startLocation, endLocation }: RouteSummary
           <div className="summary-item">
             <span className="summary-item__label">Algorithm</span>
             <strong>{route.algorithm.toUpperCase()}</strong>
+          </div>
+          <div className="summary-item">
+            <span className="summary-item__label">Objective</span>
+            <strong>{route.objective}</strong>
           </div>
           <div className="summary-item">
             <span className="summary-item__label">Distance</span>

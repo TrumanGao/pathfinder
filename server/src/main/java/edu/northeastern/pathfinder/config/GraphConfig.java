@@ -10,10 +10,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 
 /**
- * EN: Loads and exposes the shared in-memory routing graph from GeoJSON once at startup.
- * This configuration is only responsible for graph-related initialization and should not become a generic config container.
- * 中文：在应用启动时从 GeoJSON 加载并暴露共享的内存路网图，仅加载一次。
- * 该配置类只负责图相关的初始化，不应演变成杂项配置容器。
+ * Loads the shared in-memory routing graph from GeoJSON at startup.
  */
 @Configuration
 public class GraphConfig {

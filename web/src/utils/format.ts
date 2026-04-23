@@ -1,9 +1,4 @@
-/**
- * EN: Formats a duration in seconds into a compact, human-friendly label for route summaries.
- * It intentionally stays simple for UI display and does not handle localization yet.
- * 中文：将秒数格式化为适合路线摘要显示的简洁可读时间文本。
- * 这里有意保持简单，暂不处理本地化问题。
- */
+/** Formats a duration in seconds into a compact label for route summaries. */
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds)) {
     return 'Unavailable'

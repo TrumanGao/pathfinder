@@ -7,11 +7,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Set;
 
-/**
- * EN: Manages community annotations. Bounding-box query approximates a radius search
- * using a simple lat/lon offset (accurate enough at DC latitudes).
- * 中文：管理社区标注。使用简单的经纬度偏移量做包围盒查询来近似半径搜索。
- */
+/** Manages community annotations. Radius search uses a lat/lon bounding-box approximation. */
 @Service
 public class AnnotationService {
 

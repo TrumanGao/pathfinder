@@ -28,6 +28,7 @@ class MetadataControllerTest {
         when(routingService.getSupportedRoadPreferences()).thenReturn(List.of("avoidHighway", "preferMainRoad"));
         when(routingService.getNodeCount()).thenReturn(12);
         when(routingService.getEdgeCount()).thenReturn(24);
+        when(routingService.getBounds()).thenReturn(new RoutingService.GraphBounds(0.0, 1.0, 0.0, 1.0));
 
         when(searchService.getSupportedTypes()).thenReturn(List.of("food", "road"));
         when(searchService.getDefaultLimit()).thenReturn(10);

@@ -17,13 +17,10 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 /**
- * EN: Provides scored keyword search and nearby search over pre-built SearchItem records.
- * Keyword search uses a pre-built inverted index with multi-level scoring:
- * exact token match, prefix match, contains match, and edit-distance fuzzy match.
+ * Scored keyword search and nearby search over pre-built SearchItem records.
+ * Keyword search uses an inverted index with multi-level scoring:
+ * exact, prefix, contains, and edit-distance fuzzy match.
  * Nearby search filters by type and sorts by haversine distance.
- * 中文：基于预构建 SearchItem 记录提供评分关键词搜索和附近搜索。
- * 关键词搜索使用预构建的倒排索引，支持多级评分：精确匹配、前缀匹配、包含匹配和编辑距离模糊匹配。
- * 附近搜索按类型过滤并按 haversine 距离排序。
  */
 @Service
 public class SearchService {
@@ -98,11 +95,7 @@ public class SearchService {
 
     // ======================== Nearby Search ========================
 
-    /**
-     * EN: Finds SearchItems within a radius of the given coordinates, filtered by type,
-     * sorted by distance ascending.
-     * 中文：在给定坐标的半径范围内查找 SearchItem，按类型过滤，按距离升序排序。
-     */
+    /** SearchItems within a radius, filtered by type, sorted by distance ascending. */
     public List<NearbyResult> searchNearby(double lat, double lon, List<String> types, List<String> tags, double radiusMeters, Integer limit) {
         Set<String> normalizedTypes = normalizeTypes(types);
         Set<String> normalizedTags = normalizeTypes(tags);

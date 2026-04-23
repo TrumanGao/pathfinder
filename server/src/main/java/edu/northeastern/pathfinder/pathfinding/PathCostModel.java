@@ -4,12 +4,9 @@ import edu.northeastern.pathfinder.graph.Edge;
 import edu.northeastern.pathfinder.graph.Node;
 
 /**
- * EN: Request-scoped edge-cost and heuristic policy for pathfinding.
- * This layer lets routing choose distance, time, or balanced costs per request without changing
- * graph storage. It intentionally stays small and does not try to be a full routing framework.
- * 中文：用于寻路的“单次请求范围内”边成本与启发式策略。
- * 它让路由层可以按请求选择 distance、time 或 balanced 成本，而无需修改图存储。
- * 该层刻意保持轻量，不尝试演变成完整的路由框架。
+ * Request-scoped edge-cost and heuristic policy.
+ * Lets routing pick distance / time / balanced costs per request
+ * without mutating shared graph weights.
  */
 public interface PathCostModel {
     double edgeCost(Edge edge);

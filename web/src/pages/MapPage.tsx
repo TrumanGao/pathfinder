@@ -29,12 +29,7 @@ const DEFAULT_CENTER: [number, number] = [38.8951, -77.0703]
 const DEFAULT_ZOOM = 14
 const COMPARE_OBJECTIVES: RouteObjective[] = ['distance', 'time', 'balanced', 'safe_walk']
 
-/**
- * EN: Main page/container for the rebuilt map application.
- * The state shape stays explicit and lightweight so search, snapping, and routing remain easy to trace.
- * 中文：重建后地图应用的主页面容器。
- * 状态结构刻意保持显式和轻量，方便团队理解搜索、吸附和路由的完整流转。
- */
+/** Main page container: wires search, nearest-node snapping, and routing. */
 export function MapPage() {
   const [metadata, setMetadata] = useState<MetadataResponse | null>(null)
   const [metadataError, setMetadataError] = useState<string | null>(null)

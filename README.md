@@ -1,15 +1,18 @@
 # pathfinder
 
-A comparative platform for pathfinding algorithms.
+A comparative platform for shortest-path algorithms on a road network.
 
-## 后端
+## Backend
 
-- Spring Boot application that implements Dijkstra, A\*, and Bidirectional BFS algorithms.
-- RESTful APIs for the frontend to send requests and fetch algorithm results and performance metrics.
-- The backend also integrates with a large language model API to generate analysis of the algorithm results.
+- Spring Boot service that loads a road-network GeoJSON into an in-memory graph (adjacency list).
+- Implements Dijkstra and A* on top of a pluggable edge-cost model with three objectives: distance, time, and balanced.
+- Exposes REST endpoints for metadata, POI search, nearest-node snapping, and routing.
 
-## 前端
+## Frontend
 
-- React application that visualizes the pathfinding process and results.
-- Uses Vite for fast development and build.
-- Renders the exploration process and final path with different colors based on the data received from the backend.
+- React + TypeScript + Vite single-page app.
+- Uses Leaflet to render the OSM basemap, search results, start/end pins, and the computed path.
+
+## Running
+
+See `server/` and `web/` for build and run instructions.

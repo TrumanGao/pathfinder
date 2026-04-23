@@ -3,10 +3,7 @@ package edu.northeastern.pathfinder.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * EN: Minimal defaults for GeoJSON-backed search.
- * This does not add fuzzy matching, ranking models, or external search infrastructure.
- * 中文：基于 GeoJSON 搜索的最小默认配置。
- * 该配置不包含模糊匹配、复杂排序或外部搜索基础设施。
+ * Defaults for GeoJSON-backed search limits.
  */
 @ConfigurationProperties(prefix = "pathfinder.search")
 public class SearchProperties {

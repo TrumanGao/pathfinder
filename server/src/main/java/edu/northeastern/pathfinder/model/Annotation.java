@@ -9,12 +9,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/**
- * EN: Community annotation left by NEU students on the map.
- * Categories: recommendation, warning, tip.
- * 中文：NEU 学生在地图上留下的社区标注。
- * 类别：recommendation（推荐）、warning（提醒）、tip（小贴士）。
- */
+/** Community annotation pinned on the map. Category: recommendation / warning / tip. */
 @Entity
 @Table(name = "annotations")
 public class Annotation {

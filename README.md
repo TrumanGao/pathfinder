@@ -91,6 +91,23 @@ powershell -ExecutionPolicy Bypass -File .\package.ps1
 .\release\Pathfinder\Pathfinder.exe
 ```
 
+**Stopping the app**:
+
+- Normal: close the console window — it also terminates the bundled JVM.
+- If the window is gone but the app is still running (e.g., port `8080` stays busy), force-stop all `Pathfinder.exe` processes:
+
+```powershell
+Get-Process Pathfinder -ErrorAction SilentlyContinue | Stop-Process -Force
+```
+
+Verify port `8080` is released:
+
+```powershell
+Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
+```
+
+No output means the port is free.
+
 ---
 
 ## Project Structure

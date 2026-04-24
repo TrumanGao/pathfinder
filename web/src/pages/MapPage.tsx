@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createAnnotation, getAnnotations, getMetadata, getNearest, getRoute, searchLocations, searchNearby } from '../api/pathfinderApi'
+import { createAnnotation, deleteAnnotation, getAnnotations, getMetadata, getNearest, getRoute, searchLocations, searchNearby } from '../api/pathfinderApi'
 import { AnnotationPanel } from '../components/AnnotationPanel'
 import { CampusLenses, type LensId } from '../components/CampusLenses'
 import { FirstWeekGuide, type GuideItem } from '../components/FirstWeekGuide'
@@ -50,6 +50,7 @@ export function MapPage() {
 
   const [annotations, setAnnotations] = useState<Annotation[]>([])
   const [annotationLoading, setAnnotationLoading] = useState(false)
+  const [annotationError, setAnnotationError] = useState<string | null>(null)
 
   const [nearbyResults, setNearbyResults] = useState<SearchResult[]>([])
   const [nearbyTypes, setNearbyTypes] = useState<string[]>([])
@@ -157,6 +158,19 @@ export function MapPage() {
     params.set('objective', selectedObjective)
     params.set('algorithm', selectedAlgorithm)
     const url = `${window.location.pathname}?${params.toString()}`
+    window.history.replaceState(null, '', url)
+  }
+
+  // Wipe shared-route params from the URL so refreshing won't resurrect
+  // ghost "Shared start" / "Shared end" pins after the user clears state.
+  function clearRouteUrlParams() {
+    const params = new URLSearchParams(window.location.search)
+    params.delete('slat')
+    params.delete('slon')
+    params.delete('elat')
+    params.delete('elon')
+    const qs = params.toString()
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname
     window.history.replaceState(null, '', url)
   }
 
@@ -370,29 +384,44 @@ export function MapPage() {
   async function handleRefreshAnnotations() {
     const lat = pendingMapClick?.lat ?? mapCenter[0]
     const lon = pendingMapClick?.lon ?? mapCenter[1]
+    setAnnotationError(null)
     try {
       const response = await getAnnotations({ lat, lon, radius: 5000 })
       setAnnotations(response.annotations)
-    } catch {
-      // silently fail
+    } catch (error) {
+      setAnnotationError(error instanceof Error ? error.message : 'Failed to load notes')
     }
   }
 
   async function handleCreateAnnotation(params: { lat: number; lon: number; category: AnnotationCategory; text: string; author: string }) {
     setAnnotationLoading(true)
+    setAnnotationError(null)
     try {
       await createAnnotation(params)
       const response = await getAnnotations({ lat: params.lat, lon: params.lon, radius: 5000 })
       setAnnotations(response.annotations)
-    } catch {
-      // silently fail
+      setPendingMapClick(null)
+    } catch (error) {
+      setAnnotationError(error instanceof Error ? error.message : 'Failed to post note')
     } finally {
       setAnnotationLoading(false)
     }
   }
 
-  // NEU Arlington campus center (approximate)
-  const NEU_ARLINGTON: [number, number] = [38.8842, -77.1016]
+  async function handleDeleteAnnotation(id: number) {
+    setAnnotationError(null)
+    try {
+      await deleteAnnotation(id)
+      setAnnotations(prev => prev.filter(a => a.id !== id))
+    } catch (error) {
+      setAnnotationError(error instanceof Error ? error.message : 'Failed to delete note')
+    }
+  }
+
+  // Northeastern University Arlington campus — Arlington Tower,
+  // 1300 17th St N, Arlington, VA 22209 (Rosslyn).
+  // Coordinates: 38°53'37.2"N 77°04'21.5"W → decimal below.
+  const NEU_ARLINGTON: [number, number] = [38.8937, -77.0726]
 
   async function handleGuideItemClick(item: GuideItem) {
     setActiveGuideId(item.id)
@@ -528,8 +557,10 @@ export function MapPage() {
     setSearchError(null)
     setNearestError(null)
     setRouteError(null)
+    setAnnotationError(null)
     setMapCenter(DEFAULT_CENTER)
     setMapZoom(DEFAULT_ZOOM)
+    clearRouteUrlParams()
   }
 
   const exploreTab = (
@@ -641,8 +672,8 @@ export function MapPage() {
         onApplyPendingStart={() => applyPendingMapClick('start')}
         onApplyPendingEnd={() => applyPendingMapClick('end')}
         onClearPending={() => setPendingMapClick(null)}
-        onClearStart={() => setStartLocation(null)}
-        onClearEnd={() => setEndLocation(null)}
+        onClearStart={() => { setStartLocation(null); clearRouteUrlParams() }}
+        onClearEnd={() => { setEndLocation(null); clearRouteUrlParams() }}
         onSubmit={handleRouteSubmit}
         onClearRoute={handleClearRoute}
         onResetAll={handleResetAll}
@@ -671,8 +702,10 @@ export function MapPage() {
       annotations={annotations}
       pendingMapClick={pendingMapClick}
       loading={annotationLoading}
+      error={annotationError}
       onCreateAnnotation={params => void handleCreateAnnotation(params)}
       onRefresh={() => void handleRefreshAnnotations()}
+      onDelete={id => void handleDeleteAnnotation(id)}
     />
   )
 

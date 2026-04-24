@@ -108,6 +108,8 @@ public class GeoJsonLoader {
             }
         }
 
+        loadedItems = injectManualCampusPoints(loadedItems);
+
         this.graph = loadedGraph;
         this.report = loadedReport;
         this.searchItems = Collections.unmodifiableList(loadedItems);
@@ -117,6 +119,74 @@ public class GeoJsonLoader {
                 report.getFeaturesSeen(), report.getLineStringRoadFeatures(),
                 report.getSegmentsBuilt(), searchItems.size());
     }
+
+    /**
+     * Appends a small set of hand-curated landmarks that OSM lacks. These
+     * are layered on top of the parsed GeoJSON (and not written into the
+     * binary cache), so editing this list takes effect on next startup
+     * without a cache rebuild. Routing still works because the frontend
+     * sends (lat, lon) and the backend snaps to the nearest graph node
+     * via {@code NodeKdTree}.
+     */
+    private List<SearchItem> injectManualCampusPoints(List<SearchItem> source) {
+        List<SearchItem> augmented = new ArrayList<>(source.size() + MANUAL_CAMPUS_POINTS.size());
+        augmented.addAll(source);
+        int nextId = source.size() + 1;
+        for (ManualPoi poi : MANUAL_CAMPUS_POINTS) {
+            augmented.add(new SearchItem(
+                    nextId++,
+                    poi.name,
+                    poi.name,
+                    poi.type,
+                    poi.subType,
+                    poi.lat,
+                    poi.lon,
+                    "manual",
+                    true,
+                    poi.metadata,
+                    poi.tokens,
+                    List.of()
+            ));
+        }
+        log.info("Injected {} manual campus point(s) into search index", MANUAL_CAMPUS_POINTS.size());
+        return augmented;
+    }
+
+    /**
+     * Northeastern University Arlington campus (Arlington Tower,
+     * 1300 17th St N, Arlington, VA 22209 — Rosslyn).
+     * Coordinates: 38°53'37.2"N 77°04'21.5"W.
+     */
+    private static final List<ManualPoi> MANUAL_CAMPUS_POINTS = List.of(
+            new ManualPoi(
+                    "Northeastern University Arlington",
+                    "education",
+                    "university",
+                    38.8937,
+                    -77.0726,
+                    Map.of(
+                            "amenity", "university",
+                            "building", "Arlington Tower",
+                            "addr:street", "17th Street North",
+                            "addr:housenumber", "1300"
+                    ),
+                    List.of(
+                            "northeastern", "university", "arlington",
+                            "education", "campus", "neu", "rosslyn",
+                            "school", "tower", "17th", "1300"
+                    )
+            )
+    );
+
+    private record ManualPoi(
+            String name,
+            String type,
+            String subType,
+            double lat,
+            double lon,
+            Map<String, String> metadata,
+            List<String> tokens
+    ) {}
 
     public Graph getGraph() {
         return graph;

@@ -1,5 +1,5 @@
 .claude/
-data/full.geojson
+data/*.geojson
 
 # Build output
 server/target/

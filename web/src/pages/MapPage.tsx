@@ -389,8 +389,10 @@ export function MapPage() {
     }
   }
 
-  // NEU Arlington campus center (approximate)
-  const NEU_ARLINGTON: [number, number] = [38.8842, -77.1016]
+  // Northeastern University Arlington campus — Arlington Tower,
+  // 1300 17th St N, Arlington, VA 22209 (Rosslyn).
+  // Coordinates: 38°53'37.2"N 77°04'21.5"W → decimal below.
+  const NEU_ARLINGTON: [number, number] = [38.8937, -77.0726]
 
   async function handleGuideItemClick(item: GuideItem) {
     setActiveGuideId(item.id)

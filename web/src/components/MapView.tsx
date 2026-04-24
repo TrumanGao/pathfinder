@@ -26,8 +26,12 @@ interface MapViewProps {
   onSetSearchResultEnd: (result: SearchResult) => void
 }
 
-/** NEU Arlington campus center */
-const NEU_CAMPUS_CENTER: [number, number] = [38.8842, -77.1016]
+/**
+ * NEU Arlington campus center — Arlington Tower,
+ * 1300 17th St N, Arlington, VA 22209 (Rosslyn).
+ * Coordinates: 38°53'37.2"N 77°04'21.5"W.
+ */
+const NEU_CAMPUS_CENTER: [number, number] = [38.8937, -77.0726]
 
 const campusIcon = divIcon({
   className: 'campus-marker',

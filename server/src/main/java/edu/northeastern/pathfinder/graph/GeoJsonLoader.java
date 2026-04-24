@@ -68,43 +68,126 @@ public class GeoJsonLoader {
 
     public GeoJsonLoader(
             @Value("${pathfinder.graph.geojson-path:../data/full.geojson}") String geoJsonPath,
-            @Value("${pathfinder.graph.geojson-classpath:/data/full.geojson}") String geoJsonClasspath
+            @Value("${pathfinder.graph.cache-path:../data/graph-cache.bin}") String cachePath,
+            @Value("${pathfinder.graph.force-rebuild:false}") boolean forceRebuild
     ) {
-        Graph loadedGraph = new Graph();
-        GraphBuildReport loadedReport = new GraphBuildReport();
-        List<SearchItem> loadedItems = new ArrayList<>();
-
         Path path = Paths.get(geoJsonPath);
-        String sourceDescription;
-        if (Files.exists(path)) {
-            sourceDescription = "file:" + path.toAbsolutePath();
-            try (InputStream in = Files.newInputStream(path)) {
-                load(in, loadedGraph, loadedReport, loadedItems);
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed to load GeoJSON: " + sourceDescription, e);
+        Path cache = Paths.get(cachePath);
+
+        Graph loadedGraph = null;
+        GraphBuildReport loadedReport = null;
+        List<SearchItem> loadedItems = null;
+        boolean fromCache = false;
+
+        if (!forceRebuild) {
+            GraphCacheStore.Bundle bundle = GraphCacheStore.readIfFresh(cache, path);
+            if (bundle != null) {
+                loadedGraph = bundle.graph();
+                loadedReport = bundle.report();
+                loadedItems = bundle.items();
+                fromCache = true;
             }
         } else {
-            sourceDescription = "classpath:" + geoJsonClasspath;
-            try (InputStream in = GeoJsonLoader.class.getResourceAsStream(geoJsonClasspath)) {
-                if (in != null) {
+            log.info("pathfinder.graph.force-rebuild=true, bypassing cache at {}", cache);
+        }
+
+        if (!fromCache) {
+            loadedGraph = new Graph();
+            loadedReport = new GraphBuildReport();
+            loadedItems = new ArrayList<>();
+
+            if (Files.exists(path)) {
+                long t0 = System.nanoTime();
+                try (InputStream in = Files.newInputStream(path)) {
                     load(in, loadedGraph, loadedReport, loadedItems);
-                } else {
-                    log.warn("GeoJSON not found at file:{} nor classpath:{} — starting with empty graph",
-                            path.toAbsolutePath(), geoJsonClasspath);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to load GeoJSON: " + geoJsonPath, e);
                 }
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed to load GeoJSON: " + sourceDescription, e);
+                long durationMs = (System.nanoTime() - t0) / 1_000_000L;
+                log.info("GeoJSON parsed in {} ms", durationMs);
+                GraphCacheStore.write(cache, path, loadedGraph, loadedItems, loadedReport);
             }
         }
+
+        loadedItems = injectManualCampusPoints(loadedItems);
 
         this.graph = loadedGraph;
         this.report = loadedReport;
         this.searchItems = Collections.unmodifiableList(loadedItems);
 
-        log.info("GeoJSON loaded from {}: {} features seen, {} road features, {} segments, {} search items",
-                sourceDescription, report.getFeaturesSeen(), report.getLineStringRoadFeatures(),
+        log.info("Graph ready{}: {} features seen, {} road features, {} segments, {} search items",
+                fromCache ? " (from cache)" : "",
+                report.getFeaturesSeen(), report.getLineStringRoadFeatures(),
                 report.getSegmentsBuilt(), searchItems.size());
     }
+
+    /**
+     * Appends a small set of hand-curated landmarks that OSM lacks. These
+     * are layered on top of the parsed GeoJSON (and not written into the
+     * binary cache), so editing this list takes effect on next startup
+     * without a cache rebuild. Routing still works because the frontend
+     * sends (lat, lon) and the backend snaps to the nearest graph node
+     * via {@code NodeKdTree}.
+     */
+    private List<SearchItem> injectManualCampusPoints(List<SearchItem> source) {
+        List<SearchItem> augmented = new ArrayList<>(source.size() + MANUAL_CAMPUS_POINTS.size());
+        augmented.addAll(source);
+        int nextId = source.size() + 1;
+        for (ManualPoi poi : MANUAL_CAMPUS_POINTS) {
+            augmented.add(new SearchItem(
+                    nextId++,
+                    poi.name,
+                    poi.name,
+                    poi.type,
+                    poi.subType,
+                    poi.lat,
+                    poi.lon,
+                    "manual",
+                    true,
+                    poi.metadata,
+                    poi.tokens,
+                    List.of()
+            ));
+        }
+        log.info("Injected {} manual campus point(s) into search index", MANUAL_CAMPUS_POINTS.size());
+        return augmented;
+    }
+
+    /**
+     * Northeastern University Arlington campus (Arlington Tower,
+     * 1300 17th St N, Arlington, VA 22209 — Rosslyn).
+     * Coordinates: 38°53'37.2"N 77°04'21.5"W.
+     */
+    private static final List<ManualPoi> MANUAL_CAMPUS_POINTS = List.of(
+            new ManualPoi(
+                    "Northeastern University Arlington",
+                    "education",
+                    "university",
+                    38.8937,
+                    -77.0726,
+                    Map.of(
+                            "amenity", "university",
+                            "building", "Arlington Tower",
+                            "addr:street", "17th Street North",
+                            "addr:housenumber", "1300"
+                    ),
+                    List.of(
+                            "northeastern", "university", "arlington",
+                            "education", "campus", "neu", "rosslyn",
+                            "school", "tower", "17th", "1300"
+                    )
+            )
+    );
+
+    private record ManualPoi(
+            String name,
+            String type,
+            String subType,
+            double lat,
+            double lon,
+            Map<String, String> metadata,
+            List<String> tokens
+    ) {}
 
     public Graph getGraph() {
         return graph;

@@ -121,6 +121,14 @@ export async function createAnnotation(params: {
   })
 }
 
+export async function deleteAnnotation(id: number): Promise<void> {
+  const response = await fetch(`/api/annotations/${id}`, { method: 'DELETE' })
+  if (!response.ok) {
+    const message = await response.text().catch(() => '')
+    throw new Error(message || `Delete failed: ${response.status}`)
+  }
+}
+
 export async function getRoute(request: RouteRequest): Promise<RouteResponse> {
   return apiFetch<RouteResponse>('/api/route', {
     method: 'POST',

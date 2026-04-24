@@ -9,3 +9,7 @@ web/dist/
 web/node_modules/
 web/.node/
 release/
+data/graph-cache.bin
+data/pathfinder-db*
+*.mv.db
+*.trace.db

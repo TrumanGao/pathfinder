@@ -1,4 +1,4 @@
-export type RouteAlgorithm = 'astar' | 'dijkstra'
+export type RouteAlgorithm = 'astar' | 'dijkstra' | 'bidirectional'
 export type RouteObjective = 'distance' | 'time' | 'balanced' | 'safe_walk'
 export type RoadPreferenceKey = 'avoidHighway' | 'preferMainRoad'
 

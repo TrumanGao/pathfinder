@@ -1,7 +1,6 @@
 package edu.northeastern.pathfinder;
 
-import java.awt.Desktop;
-import java.net.URI;
+import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,9 +23,10 @@ public class PathfinderApplication {
 	}
 
 	/**
-	 * Open the default browser on the server URL when the app finishes booting.
-	 * Disabled automatically in headless environments or when
-	 * {@code pathfinder.launch.open-browser=false}.
+	 * Opens the default browser once Spring Boot is ready. Uses OS-native commands
+	 * (rundll32 / open / xdg-open) instead of java.awt.Desktop because the AWT
+	 * path reports headless=true inside jpackage console-subsystem launchers and
+	 * silently no-ops.
 	 */
 	@Bean
 	ApplicationListener<ApplicationReadyEvent> openBrowserOnStartup(
@@ -34,21 +34,25 @@ public class PathfinderApplication {
 			@Value("${pathfinder.launch.open-browser:false}") boolean openBrowser) {
 		return event -> {
 			if (!openBrowser) {
+				log.info("Browser auto-launch disabled (pathfinder.launch.open-browser=false)");
 				return;
 			}
-			if (java.awt.GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported()) {
-				return;
-			}
-			Desktop desktop = Desktop.getDesktop();
-			if (!desktop.isSupported(Desktop.Action.BROWSE)) {
-				return;
-			}
-			URI uri = URI.create("http://localhost:" + port + "/");
+			String url = "http://localhost:" + port + "/";
+			String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
 			try {
-				desktop.browse(uri);
-				log.info("Opened browser at {}", uri);
+				ProcessBuilder pb;
+				if (os.contains("win")) {
+					pb = new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url);
+				} else if (os.contains("mac")) {
+					pb = new ProcessBuilder("open", url);
+				} else {
+					pb = new ProcessBuilder("xdg-open", url);
+				}
+				pb.start();
+				log.info("Opened browser at {}", url);
 			} catch (Exception ex) {
-				log.warn("Failed to open browser at {}: {}", uri, ex.getMessage());
+				log.warn("Failed to open browser at {}: {}. Please open it manually.",
+						url, ex.getMessage());
 			}
 		};
 	}

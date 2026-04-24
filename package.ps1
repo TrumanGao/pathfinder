@@ -64,6 +64,7 @@ jpackage `
     --input $staging `
     --main-jar pathfinder.jar `
     --dest $releaseDir `
+    --win-console `
     --java-options "-Dspring.profiles.active=prod" `
     --java-options "-Xmx1g"
 if ($LASTEXITCODE -ne 0) { throw "jpackage failed." }

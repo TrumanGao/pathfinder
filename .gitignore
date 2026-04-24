@@ -1,5 +1,14 @@
 .claude/
-data/full.geojson
+data/*.geojson
+
+# Build output
+server/target/
+server/src/main/resources/static/
+server/src/main/resources/data/
+web/dist/
+web/node_modules/
+web/.node/
+release/
 data/graph-cache.bin
 data/pathfinder-db*
 *.mv.db

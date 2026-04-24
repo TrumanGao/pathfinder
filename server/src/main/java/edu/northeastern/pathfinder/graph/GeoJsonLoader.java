@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -97,8 +98,8 @@ public class GeoJsonLoader {
 
             if (Files.exists(path)) {
                 long t0 = System.nanoTime();
-                try {
-                    load(path, loadedGraph, loadedReport, loadedItems);
+                try (InputStream in = Files.newInputStream(path)) {
+                    load(in, loadedGraph, loadedReport, loadedItems);
                 } catch (IOException e) {
                     throw new IllegalStateException("Failed to load GeoJSON: " + geoJsonPath, e);
                 }
@@ -204,11 +205,11 @@ public class GeoJsonLoader {
      * Stream-parses the GeoJSON FeatureCollection one feature at a time.
      * Peak memory holds a single feature's JsonNode instead of the whole file.
      */
-    private void load(Path geoJsonPath, Graph graph, GraphBuildReport report, List<SearchItem> searchItems) throws IOException {
+    private void load(InputStream input, Graph graph, GraphBuildReport report, List<SearchItem> searchItems) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         int searchSequence = 1;
 
-        try (JsonParser parser = mapper.getFactory().createParser(geoJsonPath.toFile())) {
+        try (JsonParser parser = mapper.getFactory().createParser(input)) {
             // Navigate to the "features" array
             if (!advanceToFeaturesArray(parser)) {
                 return;

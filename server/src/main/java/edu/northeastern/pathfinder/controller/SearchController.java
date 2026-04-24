@@ -11,10 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * EN: Search API controller providing keyword search and nearby search.
- * 中文：搜索接口控制器，提供关键词搜索和附近搜索。
- */
+/** Search API: keyword search and nearby search over the GeoJSON index. */
 @RestController
 @RequestMapping("/api")
 public class SearchController {
@@ -24,10 +21,7 @@ public class SearchController {
         this.searchService = searchService;
     }
 
-    /**
-     * EN: Keyword search with scored ranking, fuzzy matching, and optional type filtering.
-     * 中文：带评分排序、模糊匹配和可选类型过滤的关键词搜索。
-     */
+    /** Keyword search with scored ranking, fuzzy matching, and optional type/tag filtering. */
     @GetMapping("/search")
     public SearchResponseDto search(
             @RequestParam("q") String query,
@@ -43,11 +37,7 @@ public class SearchController {
         return new SearchResponseDto(query, results.size(), results);
     }
 
-    /**
-     * EN: Nearby search: finds places within a radius of the given coordinates,
-     * filtered by type, sorted by distance ascending.
-     * 中文：附近搜索：在给定坐标半径内查找地点，按类型过滤，按距离升序排序。
-     */
+    /** Nearby search: places within a radius, filtered by type, sorted by distance. */
     @GetMapping("/search/nearby")
     public SearchResponseDto nearby(
             @RequestParam("lat") double lat,

@@ -28,11 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
- * EN: Single-pass streaming loader that reads the GeoJSON file once and produces both
- * the routing Graph and the SearchItem list. This avoids loading the entire 866MB+ JSON
- * tree into memory twice (previously done independently by GeoJsonGraphBuilder and SearchService).
- * 中文：单次流式加载器，一次读取 GeoJSON 文件，同时生成路由 Graph 和 SearchItem 列表。
- * 避免了此前 GeoJsonGraphBuilder 和 SearchService 各自将整个 866MB+ JSON 树加载进内存的问题。
+ * Single-pass streaming loader that reads the GeoJSON file once and produces
+ * both the routing Graph and the SearchItem list, avoiding a double load.
  */
 @Component
 public class GeoJsonLoader {
@@ -57,11 +54,8 @@ public class GeoJsonLoader {
     private final ConcurrentHashMap<String, String> internPool = new ConcurrentHashMap<>();
 
     /**
-     * EN: Whitelist of raw tag keys retained on Edge objects for future weight/cost models.
-     * highway, maxspeed, oneway, and name are already stored as dedicated Edge fields
-     * and therefore excluded from rawTags to avoid double storage.
-     * 中文：保留在 Edge.rawTags 中的 key 白名单，用于未来权重/成本模型。
-     * highway、maxspeed、oneway、name 已作为 Edge 独立字段存储，不再重复放入 rawTags。
+     * Whitelist of raw tag keys retained on Edge objects for future cost models.
+     * highway, maxspeed, oneway, name already live as dedicated Edge fields.
      */
     private static final Set<String> RETAINED_ROAD_TAGS = Set.of(
             "surface", "lanes", "access", "bridge", "tunnel",
@@ -109,12 +103,8 @@ public class GeoJsonLoader {
     }
 
     /**
-     * EN: Stream-parses the GeoJSON FeatureCollection one feature at a time using Jackson's
-     * streaming API. Each feature is read as a small JsonNode tree, processed, then discarded.
-     * Peak memory holds only one feature's JsonNode rather than the entire file.
-     * 中文：使用 Jackson 流式 API 逐条解析 GeoJSON FeatureCollection 中的 feature。
-     * 每个 feature 被读取为小型 JsonNode 树，处理后即丢弃。
-     * 峰值内存只保留一个 feature 的 JsonNode，而非整个文件。
+     * Stream-parses the GeoJSON FeatureCollection one feature at a time.
+     * Peak memory holds a single feature's JsonNode instead of the whole file.
      */
     private void load(Path geoJsonPath, Graph graph, GraphBuildReport report, List<SearchItem> searchItems) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -282,10 +272,8 @@ public class GeoJsonLoader {
     // ======================== Search item building ========================
 
     /**
-     * EN: Replicates the SearchService classification/filtering logic so that search items
-     * are produced during the same single pass. The classification rules are copied here
-     * to keep SearchService decoupled from the graph layer.
-     * 中文：复制 SearchService 的分类/过滤逻辑，在同一次遍历中生成搜索项。
+     * Produces search items during the same loader pass by replicating
+     * SearchService classification/filtering logic.
      */
     private SearchItem processSearchFeature(JsonNode feature, int sequence) {
         JsonNode propertiesNode = feature.path("properties");
@@ -504,10 +492,7 @@ public class GeoJsonLoader {
             "afghan", "persian", "lebanese", "arab", "moroccan"
     );
 
-    /**
-     * EN: Builds lifestyle tags for international students based on cuisine, category, and name.
-     * 中文：根据菜系、分类和名称为国际学生构建生活标签。
-     */
+    /** Builds lifestyle tags for international students from cuisine, category, and name. */
     private List<String> buildStudentTags(String name, SearchCategory category, Map<String, String> tags, String cuisine) {
         List<String> result = new ArrayList<>();
         String nameLower = name == null ? "" : name.toLowerCase(Locale.ROOT);
@@ -585,10 +570,8 @@ public class GeoJsonLoader {
     // ======================== Tokenization ========================
 
     /**
-     * EN: Builds pre-computed search tokens from name, type, subType, and metadata values.
+     * Pre-computes search tokens from name, type, subType, and metadata.
      * Tokens are lowercased, accent-stripped, and split on whitespace/punctuation.
-     * 中文：从 name、type、subType 和 metadata 值预计算搜索分词。
-     * 分词结果为小写、去重音、按空白/标点分割。
      */
     private List<String> buildSearchTokens(String name, String type, String subType, Map<String, String> metadata) {
         List<String> tokens = new ArrayList<>();

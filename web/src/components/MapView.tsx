@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { Circle, CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { divIcon, type LatLngBoundsExpression } from 'leaflet'
 import type { Annotation, PendingMapClick, RouteObjective, SearchResult, SelectedLocation } from '../types'
 
@@ -83,6 +83,7 @@ const ANNOTATION_ICONS: Record<string, ReturnType<typeof divIcon>> = {
   tip: divIcon({ className: 'annotation-marker annotation-marker--tip', html: '\uD83D\uDCA1', iconSize: [24, 24], iconAnchor: [12, 12] }),
 }
 
+/** Main Leaflet map view. */
 export function MapView({
   darkMode,
   center,
@@ -231,6 +232,7 @@ function MapViewportSync({ center, zoom }: { center: [number, number]; zoom: num
   return null
 }
 
+/** Emits lat/lng on map click so the parent can snap to the nearest node. */
 function MapClickHandler({ onMapClick }: { onMapClick: (latlng: { lat: number; lng: number }) => void }) {
   useMapEvents({ click(event) { onMapClick(event.latlng) } })
   return null

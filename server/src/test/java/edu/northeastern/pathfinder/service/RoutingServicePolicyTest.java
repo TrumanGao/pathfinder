@@ -1,6 +1,5 @@
 package edu.northeastern.pathfinder.service;
 
-import edu.northeastern.pathfinder.config.NearestNodeProperties;
 import edu.northeastern.pathfinder.config.RoutingProperties;
 import edu.northeastern.pathfinder.graph.Edge;
 import edu.northeastern.pathfinder.graph.Graph;
@@ -50,7 +49,7 @@ class RoutingServicePolicyTest {
         balanced.setTimeWeight(0.5);
         routingProperties.setBalanced(balanced);
 
-        NearestNodeService nearestNodeService = new NearestNodeService(graph, new NearestNodeProperties());
+        NearestNodeService nearestNodeService = new NearestNodeService(graph);
         SpeedResolver speedResolver = new SpeedResolver(routingProperties);
         RoutingCostPolicy routingCostPolicy = new RoutingCostPolicy(routingProperties, speedResolver);
         routingService = new RoutingService(graph, nearestNodeService, routingProperties, routingCostPolicy, speedResolver);

@@ -9,18 +9,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * EN: Resolves an effective edge speed for time-based routing.
- * Resolution order is intentionally simple and explainable:
- * 1) parse a small supported subset of maxspeed formats,
- * 2) fall back to highway-type defaults,
- * 3) fall back to one global speed.
- * It does not try to implement country-specific traffic rules in this phase.
- * 中文：为基于时间的路由解析边的有效速度。
- * 解析顺序刻意保持简单、可解释：
- * 1）先解析少量受支持的 maxspeed 格式，
- * 2）再回退到 highway 类型默认速度，
- * 3）最后回退到全局默认速度。
- * 本阶段不尝试实现国家或地区级别的交通规则。
+ * Resolves an effective edge speed: maxspeed -> per-highway default -> global fallback.
  */
 @Component
 public class SpeedResolver {

@@ -5,10 +5,7 @@ import edu.northeastern.pathfinder.graph.Graph;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * EN: Exposes the shared in-memory routing graph loaded by GeoJsonLoader.
- * 中文：暴露由 GeoJsonLoader 加载的共享内存路网图。
- */
+/** Exposes the shared in-memory routing graph loaded by GeoJsonLoader. */
 @Configuration
 public class GraphConfig {
 

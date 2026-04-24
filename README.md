@@ -1,14 +1,14 @@
 # pathfinder
 
-A comparative platform for pathfinding algorithms.
+A comparative platform for shortest-path algorithms on a road network.
 
 ## Structure
 
 ### server
 
-- Spring Boot application that implements Dijkstra, A\*, and Bidirectional BFS algorithms.
-- RESTful APIs for the frontend to send requests and fetch algorithm results and performance metrics.
-- The backend also integrates with a large language model API to generate analysis of the algorithm results.
+- Spring Boot service that loads a road-network GeoJSON into an in-memory graph (adjacency list).
+- Implements Dijkstra and A* on top of a pluggable edge-cost model with three objectives: distance, time, and balanced.
+- Exposes REST endpoints for metadata, POI search, nearest-node snapping, and routing.
 
 ### web
 

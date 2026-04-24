@@ -1,4 +1,3 @@
-// 启动类 (包含 main 函数)
 package edu.northeastern.pathfinder;
 
 import org.springframework.boot.SpringApplication;

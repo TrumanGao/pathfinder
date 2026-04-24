@@ -9,10 +9,7 @@ import type {
   SearchResponse,
 } from '../types'
 
-/**
- * EN: Thin typed API client for the current backend contracts.
- * 中文：面向当前后端契约的轻量类型化 API 客户端。
- */
+/** Thin typed API client for the backend. */
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init)
   if (!response.ok) {

@@ -4,10 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-/**
- * EN: Response DTO for search and nearby-search endpoints.
- * 中文：搜索和附近搜索端点的响应 DTO。
- */
+/** Response payload for /api/search and /api/search/nearby. */
 public record SearchResponseDto(
         String query,
         int count,

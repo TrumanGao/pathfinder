@@ -5,8 +5,10 @@ interface AnnotationPanelProps {
   annotations: Annotation[]
   pendingMapClick: PendingMapClick | null
   loading: boolean
+  error: string | null
   onCreateAnnotation: (params: { lat: number; lon: number; category: AnnotationCategory; text: string; author: string }) => void
   onRefresh: () => void
+  onDelete: (id: number) => void
 }
 
 const CATEGORIES: { value: AnnotationCategory; label: string; icon: string }[] = [
@@ -15,7 +17,7 @@ const CATEGORIES: { value: AnnotationCategory; label: string; icon: string }[] =
   { value: 'tip', label: 'Tip', icon: '\uD83D\uDCA1' },
 ]
 
-export function AnnotationPanel({ annotations, pendingMapClick, loading, onCreateAnnotation, onRefresh }: AnnotationPanelProps) {
+export function AnnotationPanel({ annotations, pendingMapClick, loading, error, onCreateAnnotation, onRefresh, onDelete }: AnnotationPanelProps) {
   const [category, setCategory] = useState<AnnotationCategory>('recommendation')
   const [text, setText] = useState('')
   const [author, setAuthor] = useState('')
@@ -89,6 +91,8 @@ export function AnnotationPanel({ annotations, pendingMapClick, loading, onCreat
         <div className="panel-message">Click the map to add a community note at that location.</div>
       )}
 
+      {error && <div className="panel-message panel-message--error">{error}</div>}
+
       <button type="button" className="secondary-button" onClick={onRefresh} style={{ marginTop: 8 }}>
         Refresh Notes
       </button>
@@ -101,6 +105,15 @@ export function AnnotationPanel({ annotations, pendingMapClick, loading, onCreat
                 <span>{a.category === 'recommendation' ? '\u2B50' : a.category === 'warning' ? '\u26A0\uFE0F' : '\uD83D\uDCA1'}</span>
                 <span className="annotation-card__author">{a.author}</span>
                 <span className="annotation-card__time">{new Date(a.createdAt).toLocaleDateString()}</span>
+                <button
+                  type="button"
+                  className="link-button annotation-card__delete"
+                  onClick={() => onDelete(a.id)}
+                  aria-label="Delete note"
+                  title="Delete note"
+                >
+                  &times;
+                </button>
               </div>
               <div className="annotation-card__text">{a.text}</div>
             </div>

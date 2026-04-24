@@ -1,3 +1,6 @@
 .claude/
 data/full.geojson
 data/graph-cache.bin
+data/pathfinder-db*
+*.mv.db
+*.trace.db

@@ -37,4 +37,11 @@ public class AnnotationService {
         }
         return repository.save(new Annotation(lat, lon, category, text.trim(), author == null ? "Anonymous" : author.trim()));
     }
+
+    public void delete(Long id) {
+        if (!repository.existsById(id)) {
+            throw new IllegalArgumentException("Annotation not found: " + id);
+        }
+        repository.deleteById(id);
+    }
 }

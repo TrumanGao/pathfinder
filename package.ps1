@@ -26,14 +26,18 @@ try {
     Pop-Location
 }
 
-# ---- Step 2: Copy frontend dist + GeoJSON into Spring Boot resources ------
-Write-Host "==> [2/5] Copy web\dist and data\full.geojson into server resources" -ForegroundColor Cyan
+# ---- Step 2: Copy frontend dist into Spring Boot resources ----------------
+# GeoJSON is intentionally NOT bundled inside the jar. It is copied next to
+# the jar in step 4 so startup reads from the filesystem (keeps the jar lean
+# and lets users swap the dataset without repackaging).
+Write-Host "==> [2/5] Copy web\dist into server resources" -ForegroundColor Cyan
 if (Test-Path $staticDir) { Remove-Item $staticDir -Recurse -Force }
 New-Item -ItemType Directory -Path $staticDir | Out-Null
 Copy-Item (Join-Path $webDir 'dist\*') $staticDir -Recurse
 
-if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir | Out-Null }
-Copy-Item (Join-Path $root 'data\full.geojson') (Join-Path $dataDir 'full.geojson') -Force
+# Remove any stale GeoJSON left inside resources by older builds, otherwise
+# it would still get embedded in the jar via mvn package.
+if (Test-Path $dataDir) { Remove-Item $dataDir -Recurse -Force }
 
 # ---- Step 3: Build the Spring Boot fat jar --------------------------------
 Write-Host "==> [3/5] mvn clean package (produces server\target\*.jar)" -ForegroundColor Cyan
@@ -57,6 +61,10 @@ $staging = Join-Path $releaseDir 'staging'
 New-Item -ItemType Directory -Path $staging | Out-Null
 Copy-Item $jar.FullName (Join-Path $staging 'pathfinder.jar')
 
+# $APPDIR is a jpackage-launcher token expanded at runtime to the absolute
+# path of release\Pathfinder\app\ (same mechanism already used for
+# app.classpath in Pathfinder.cfg). Single quotes prevent PowerShell from
+# expanding $APPDIR to an empty string at package time.
 jpackage `
     --type app-image `
     --name Pathfinder `
@@ -66,9 +74,15 @@ jpackage `
     --dest $releaseDir `
     --win-console `
     --java-options "-Dspring.profiles.active=prod" `
-    --java-options "-Xmx1g"
+    --java-options "-Xmx4g" `
+    --java-options '-Dpathfinder.graph.geojson-path=$APPDIR/data/full.geojson'
 if ($LASTEXITCODE -ne 0) { throw "jpackage failed." }
 Remove-Item $staging -Recurse -Force
+
+# Ship GeoJSON next to the jar so the launcher's -D path resolves at runtime.
+$appDataDir = Join-Path $releaseDir 'Pathfinder\app\data'
+New-Item -ItemType Directory -Path $appDataDir | Out-Null
+Copy-Item (Join-Path $root 'data\full.geojson') (Join-Path $appDataDir 'full.geojson')
 
 # ---- Step 5: Zip for delivery ---------------------------------------------
 Write-Host "==> [5/5] Zip release\Pathfinder -> Pathfinder-$appVersion.zip" -ForegroundColor Cyan

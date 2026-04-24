@@ -1,2 +1,3 @@
 .claude/
 data/full.geojson
+data/graph-cache.bin

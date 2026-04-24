@@ -66,18 +66,45 @@ public class GeoJsonLoader {
     );
 
     public GeoJsonLoader(
-            @Value("${pathfinder.graph.geojson-path:../data/full.geojson}") String geoJsonPath
+            @Value("${pathfinder.graph.geojson-path:../data/full.geojson}") String geoJsonPath,
+            @Value("${pathfinder.graph.cache-path:../data/graph-cache.bin}") String cachePath,
+            @Value("${pathfinder.graph.force-rebuild:false}") boolean forceRebuild
     ) {
         Path path = Paths.get(geoJsonPath);
-        Graph loadedGraph = new Graph();
-        GraphBuildReport loadedReport = new GraphBuildReport();
-        List<SearchItem> loadedItems = new ArrayList<>();
+        Path cache = Paths.get(cachePath);
 
-        if (Files.exists(path)) {
-            try {
-                load(path, loadedGraph, loadedReport, loadedItems);
-            } catch (IOException e) {
-                throw new IllegalStateException("Failed to load GeoJSON: " + geoJsonPath, e);
+        Graph loadedGraph = null;
+        GraphBuildReport loadedReport = null;
+        List<SearchItem> loadedItems = null;
+        boolean fromCache = false;
+
+        if (!forceRebuild) {
+            GraphCacheStore.Bundle bundle = GraphCacheStore.readIfFresh(cache, path);
+            if (bundle != null) {
+                loadedGraph = bundle.graph();
+                loadedReport = bundle.report();
+                loadedItems = bundle.items();
+                fromCache = true;
+            }
+        } else {
+            log.info("pathfinder.graph.force-rebuild=true, bypassing cache at {}", cache);
+        }
+
+        if (!fromCache) {
+            loadedGraph = new Graph();
+            loadedReport = new GraphBuildReport();
+            loadedItems = new ArrayList<>();
+
+            if (Files.exists(path)) {
+                long t0 = System.nanoTime();
+                try {
+                    load(path, loadedGraph, loadedReport, loadedItems);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Failed to load GeoJSON: " + geoJsonPath, e);
+                }
+                long durationMs = (System.nanoTime() - t0) / 1_000_000L;
+                log.info("GeoJSON parsed in {} ms", durationMs);
+                GraphCacheStore.write(cache, path, loadedGraph, loadedItems, loadedReport);
             }
         }
 
@@ -85,7 +112,8 @@ public class GeoJsonLoader {
         this.report = loadedReport;
         this.searchItems = Collections.unmodifiableList(loadedItems);
 
-        log.info("GeoJSON loaded: {} features seen, {} road features, {} segments, {} search items",
+        log.info("Graph ready{}: {} features seen, {} road features, {} segments, {} search items",
+                fromCache ? " (from cache)" : "",
                 report.getFeaturesSeen(), report.getLineStringRoadFeatures(),
                 report.getSegmentsBuilt(), searchItems.size());
     }

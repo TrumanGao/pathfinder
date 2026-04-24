@@ -4,6 +4,7 @@ import edu.northeastern.pathfinder.config.RoutingProperties;
 import edu.northeastern.pathfinder.graph.Edge;
 import edu.northeastern.pathfinder.graph.Graph;
 import edu.northeastern.pathfinder.pathfinding.AStarShortestPath;
+import edu.northeastern.pathfinder.pathfinding.BidirectionalDijkstra;
 import edu.northeastern.pathfinder.pathfinding.DijkstraShortestPath;
 import edu.northeastern.pathfinder.pathfinding.PathCostModel;
 import edu.northeastern.pathfinder.pathfinding.PathfindingResult;
@@ -27,6 +28,7 @@ public class RoutingService {
     private final SpeedResolver speedResolver;
     private final ShortestPathAlgorithm astar = new AStarShortestPath();
     private final ShortestPathAlgorithm dijkstra = new DijkstraShortestPath();
+    private final ShortestPathAlgorithm bidirectional = new BidirectionalDijkstra();
     private final GraphBounds bounds;
 
     public RoutingService(
@@ -118,7 +120,7 @@ public class RoutingService {
     }
 
     public List<String> getSupportedAlgorithms() {
-        return List.of("astar", "dijkstra");
+        return List.of("astar", "dijkstra", "bidirectional");
     }
 
     public String getDefaultObjective() {
@@ -237,19 +239,28 @@ public class RoutingService {
         return switch (lower) {
             case "dijkstra" -> "dijkstra";
             case "astar" -> "astar";
+            case "bidirectional", "bidi", "bidirectional-dijkstra" -> "bidirectional";
             default -> getDefaultAlgorithmValue();
         };
     }
 
     private ShortestPathAlgorithm selectAlgorithm(String algorithm) {
-        if ("dijkstra".equals(algorithm)) {
-            return dijkstra;
-        }
-        return astar;
+        return switch (algorithm) {
+            case "dijkstra" -> dijkstra;
+            case "bidirectional" -> bidirectional;
+            default -> astar;
+        };
     }
 
     private String getDefaultAlgorithmValue() {
-        return "dijkstra".equalsIgnoreCase(properties.getDefaultAlgorithm()) ? "dijkstra" : "astar";
+        String configured = properties.getDefaultAlgorithm();
+        if (configured == null) return "astar";
+        String lower = configured.trim().toLowerCase(Locale.ROOT);
+        return switch (lower) {
+            case "dijkstra" -> "dijkstra";
+            case "bidirectional", "bidi", "bidirectional-dijkstra" -> "bidirectional";
+            default -> "astar";
+        };
     }
 
     public record RouteQuery(

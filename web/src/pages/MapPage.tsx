@@ -368,7 +368,8 @@ export function MapPage() {
   }
 
   async function handleRefreshAnnotations() {
-    const [lat, lon] = mapCenter
+    const lat = pendingMapClick?.lat ?? mapCenter[0]
+    const lon = pendingMapClick?.lon ?? mapCenter[1]
     try {
       const response = await getAnnotations({ lat, lon, radius: 5000 })
       setAnnotations(response.annotations)
@@ -381,7 +382,8 @@ export function MapPage() {
     setAnnotationLoading(true)
     try {
       await createAnnotation(params)
-      await handleRefreshAnnotations()
+      const response = await getAnnotations({ lat: params.lat, lon: params.lon, radius: 5000 })
+      setAnnotations(response.annotations)
     } catch {
       // silently fail
     } finally {

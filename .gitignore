@@ -1,2 +1,11 @@
 .claude/
 data/full.geojson
+
+# Build output
+server/target/
+server/src/main/resources/static/
+server/src/main/resources/data/
+web/dist/
+web/node_modules/
+web/.node/
+release/

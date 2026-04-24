@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -66,18 +67,33 @@ public class GeoJsonLoader {
     );
 
     public GeoJsonLoader(
-            @Value("${pathfinder.graph.geojson-path:../data/full.geojson}") String geoJsonPath
+            @Value("${pathfinder.graph.geojson-path:../data/full.geojson}") String geoJsonPath,
+            @Value("${pathfinder.graph.geojson-classpath:/data/full.geojson}") String geoJsonClasspath
     ) {
-        Path path = Paths.get(geoJsonPath);
         Graph loadedGraph = new Graph();
         GraphBuildReport loadedReport = new GraphBuildReport();
         List<SearchItem> loadedItems = new ArrayList<>();
 
+        Path path = Paths.get(geoJsonPath);
+        String sourceDescription;
         if (Files.exists(path)) {
-            try {
-                load(path, loadedGraph, loadedReport, loadedItems);
+            sourceDescription = "file:" + path.toAbsolutePath();
+            try (InputStream in = Files.newInputStream(path)) {
+                load(in, loadedGraph, loadedReport, loadedItems);
             } catch (IOException e) {
-                throw new IllegalStateException("Failed to load GeoJSON: " + geoJsonPath, e);
+                throw new IllegalStateException("Failed to load GeoJSON: " + sourceDescription, e);
+            }
+        } else {
+            sourceDescription = "classpath:" + geoJsonClasspath;
+            try (InputStream in = GeoJsonLoader.class.getResourceAsStream(geoJsonClasspath)) {
+                if (in != null) {
+                    load(in, loadedGraph, loadedReport, loadedItems);
+                } else {
+                    log.warn("GeoJSON not found at file:{} nor classpath:{} — starting with empty graph",
+                            path.toAbsolutePath(), geoJsonClasspath);
+                }
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to load GeoJSON: " + sourceDescription, e);
             }
         }
 
@@ -85,8 +101,8 @@ public class GeoJsonLoader {
         this.report = loadedReport;
         this.searchItems = Collections.unmodifiableList(loadedItems);
 
-        log.info("GeoJSON loaded: {} features seen, {} road features, {} segments, {} search items",
-                report.getFeaturesSeen(), report.getLineStringRoadFeatures(),
+        log.info("GeoJSON loaded from {}: {} features seen, {} road features, {} segments, {} search items",
+                sourceDescription, report.getFeaturesSeen(), report.getLineStringRoadFeatures(),
                 report.getSegmentsBuilt(), searchItems.size());
     }
 
@@ -106,11 +122,11 @@ public class GeoJsonLoader {
      * Stream-parses the GeoJSON FeatureCollection one feature at a time.
      * Peak memory holds a single feature's JsonNode instead of the whole file.
      */
-    private void load(Path geoJsonPath, Graph graph, GraphBuildReport report, List<SearchItem> searchItems) throws IOException {
+    private void load(InputStream input, Graph graph, GraphBuildReport report, List<SearchItem> searchItems) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         int searchSequence = 1;
 
-        try (JsonParser parser = mapper.getFactory().createParser(geoJsonPath.toFile())) {
+        try (JsonParser parser = mapper.getFactory().createParser(input)) {
             // Navigate to the "features" array
             if (!advanceToFeaturesArray(parser)) {
                 return;

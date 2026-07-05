@@ -1,15 +1,42 @@
 .claude/
-data/*.geojson
+
+# IDE and editor files
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+.springBeans
+.sts4-cache/
+
+# Logs
+logs/
+*.log
+*.trace.db
 
 # Build output
-server/target/
+target/
+**/target/
+build/
+**/build/
+release/
 server/src/main/resources/static/
 server/src/main/resources/data/
 web/dist/
 web/node_modules/
 web/.node/
-release/
+
+# Generated or local data
+data/*.geojson
 data/graph-cache.bin
 data/pathfinder-db*
 *.mv.db
-*.trace.db
+
+# Spring Boot / Maven helper files
+HELP.md
+.mvn/wrapper/maven-wrapper.jar
